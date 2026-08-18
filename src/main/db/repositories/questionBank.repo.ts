@@ -90,3 +90,8 @@ export function listQuestionsBySource(source: QuestionSource): Question[] {
 export function deleteQuestion(id: string): void {
   getDb().prepare('DELETE FROM question_bank WHERE id = ?').run(id)
 }
+
+export function countAll(): number {
+  const row = getDb().prepare('SELECT COUNT(*) as c FROM question_bank').get() as { c: number }
+  return row.c
+}

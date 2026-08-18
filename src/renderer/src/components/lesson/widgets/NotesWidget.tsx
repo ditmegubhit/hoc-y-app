@@ -1,3 +1,4 @@
+import { NotebookPen } from 'lucide-react'
 import LessonEditor from '../LessonEditor'
 import { useUpdateLesson } from '@renderer/queries/lessons'
 import type { LessonWidgetProps } from '../widgetRegistry'
@@ -7,7 +8,9 @@ function NotesWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
 
   return (
     <section className="lesson-widget">
-      <h3>Ghi chú</h3>
+      <h3>
+        <NotebookPen size={16} /> Ghi chú
+      </h3>
       <LessonEditor
         lessonId={lesson.id}
         initialContentJson={lesson.notesJson}

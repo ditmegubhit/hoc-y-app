@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { Paperclip, Plus, RotateCcw, X } from 'lucide-react'
 import {
   attachmentsQueryKey,
   useAttachments,
@@ -38,13 +39,16 @@ function AttachmentsWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
 
   return (
     <section className="lesson-widget">
-      <h3>File đính kèm</h3>
+      <h3>
+        <Paperclip size={16} /> File đính kèm
+      </h3>
       <button
         type="button"
+        className="btn-secondary"
         disabled={addAttachment.isPending}
         onClick={() => addAttachment.mutate()}
       >
-        + Thêm file (PDF / Word / PowerPoint / Ảnh)
+        <Plus size={14} /> Thêm file (PDF / Word / PowerPoint / Ảnh)
       </button>
 
       {attachmentsQuery.data && attachmentsQuery.data.length === 0 && (
@@ -60,19 +64,24 @@ function AttachmentsWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
               {STATUS_LABEL[att.extractionStatus] ?? att.extractionStatus}
             </span>
             {att.extractionStatus === 'failed' && (
-              <button type="button" onClick={() => reextractAttachment.mutate(att.id)}>
-                Thử lại
+              <button
+                type="button"
+                title="Thử lại"
+                onClick={() => reextractAttachment.mutate(att.id)}
+              >
+                <RotateCcw size={13} />
               </button>
             )}
             <button
               type="button"
+              title="Xoá"
               onClick={() => {
                 if (window.confirm(`Xoá file "${att.fileName}"?`)) {
                   removeAttachment.mutate(att.id)
                 }
               }}
             >
-              Xoá
+              <X size={13} />
             </button>
           </li>
         ))}

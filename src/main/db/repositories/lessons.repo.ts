@@ -4,6 +4,7 @@ import * as searchIndexRepo from './searchIndex.repo'
 import type {
   Lesson,
   LessonSummary,
+  RecentLesson,
   CreateLessonInput,
   UpdateLessonInput
 } from '../../../shared/types/lesson'
@@ -41,6 +42,20 @@ export function listAllLessonSummaries(): LessonSummary[] {
     .prepare('SELECT id, topic_id, title, sort_order FROM lessons ORDER BY sort_order, title')
     .all() as LessonRow[]
   return rows.map(mapLessonSummary)
+}
+
+export function listRecentLessons(limit: number): RecentLesson[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT l.id as id, l.title as title, l.topic_id as topicId, t.name as topicName,
+              l.updated_at as updatedAt
+       FROM lessons l
+       JOIN topics t ON t.id = l.topic_id
+       ORDER BY l.updated_at DESC
+       LIMIT ?`
+    )
+    .all(limit) as RecentLesson[]
+  return rows
 }
 
 export function getLesson(id: string): Lesson | null {

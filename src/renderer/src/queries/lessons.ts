@@ -3,9 +3,17 @@ import type { CreateLessonInput, UpdateLessonInput } from '@shared/types/lesson'
 
 export const lessonsQueryKey = ['lessons'] as const
 export const lessonQueryKey = (id: string) => ['lessons', id] as const
+export const recentLessonsQueryKey = ['lessons', 'recent'] as const
 
 export function useLessons() {
   return useQuery({ queryKey: lessonsQueryKey, queryFn: () => window.api.lessons.listAll() })
+}
+
+export function useRecentLessons(limit = 5) {
+  return useQuery({
+    queryKey: recentLessonsQueryKey,
+    queryFn: () => window.api.lessons.listRecent(limit)
+  })
 }
 
 export function useLesson(id: string | null) {
@@ -20,7 +28,10 @@ export function useCreateLesson() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateLessonInput) => window.api.lessons.create(input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: lessonsQueryKey })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: lessonsQueryKey })
+      qc.invalidateQueries({ queryKey: recentLessonsQueryKey })
+    }
   })
 }
 
@@ -31,6 +42,7 @@ export function useUpdateLesson() {
     onSuccess: (lesson) => {
       qc.invalidateQueries({ queryKey: lessonsQueryKey })
       qc.invalidateQueries({ queryKey: lessonQueryKey(lesson.id) })
+      qc.invalidateQueries({ queryKey: recentLessonsQueryKey })
     }
   })
 }
@@ -39,6 +51,9 @@ export function useDeleteLesson() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => window.api.lessons.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: lessonsQueryKey })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: lessonsQueryKey })
+      qc.invalidateQueries({ queryKey: recentLessonsQueryKey })
+    }
   })
 }

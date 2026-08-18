@@ -12,6 +12,7 @@ const api: AppApi = {
   },
   lessons: {
     listAll: () => ipcRenderer.invoke(IpcChannels.lessons.listAll),
+    listRecent: (limit) => ipcRenderer.invoke(IpcChannels.lessons.listRecent, { limit }),
     get: (id) => ipcRenderer.invoke(IpcChannels.lessons.get, { id }),
     create: (input) => ipcRenderer.invoke(IpcChannels.lessons.create, input),
     update: (input) => ipcRenderer.invoke(IpcChannels.lessons.update, input),
@@ -43,6 +44,9 @@ const api: AppApi = {
     listQuestionsByLesson: (lessonId) =>
       ipcRenderer.invoke(IpcChannels.ai.listQuestionsByLesson, { lessonId }),
     deleteQuestion: (id) => ipcRenderer.invoke(IpcChannels.ai.deleteQuestion, { id })
+  },
+  questionBank: {
+    countAll: () => ipcRenderer.invoke(IpcChannels.questionBank.countAll)
   }
 }
 

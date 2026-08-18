@@ -1,5 +1,11 @@
 import type { Topic, CreateTopicInput, UpdateTopicInput } from './topic'
-import type { Lesson, LessonSummary, CreateLessonInput, UpdateLessonInput } from './lesson'
+import type {
+  Lesson,
+  LessonSummary,
+  RecentLesson,
+  CreateLessonInput,
+  UpdateLessonInput
+} from './lesson'
 import type { Attachment } from './attachment'
 import type { SearchResultGroup } from './search'
 import type { DraftQuestion, Question } from './question'
@@ -15,6 +21,7 @@ export interface AppApi {
   }
   lessons: {
     listAll: () => Promise<LessonSummary[]>
+    listRecent: (limit: number) => Promise<RecentLesson[]>
     get: (id: string) => Promise<Lesson | null>
     create: (input: CreateLessonInput) => Promise<Lesson>
     update: (input: UpdateLessonInput) => Promise<Lesson>
@@ -42,5 +49,8 @@ export interface AppApi {
     }) => Promise<Question[]>
     listQuestionsByLesson: (lessonId: string) => Promise<Question[]>
     deleteQuestion: (id: string) => Promise<void>
+  }
+  questionBank: {
+    countAll: () => Promise<number>
   }
 }

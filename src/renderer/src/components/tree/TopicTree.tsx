@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Tree } from 'react-arborist'
+import { Folder, FolderOpen, FileText, FolderPlus, FilePlus, Pencil, Trash2, Plus } from 'lucide-react'
 import type {
   NodeApi,
   TreeApi,
@@ -71,7 +72,15 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
       }}
     >
       <span className="tree-icon">
-        {node.data.kind === 'topic' ? (node.isOpen ? '📂' : '📁') : '📄'}
+        {node.data.kind === 'topic' ? (
+          node.isOpen ? (
+            <FolderOpen size={15} />
+          ) : (
+            <Folder size={15} />
+          )
+        ) : (
+          <FileText size={15} />
+        )}
       </span>
       {node.isEditing ? (
         <EditInput node={node} />
@@ -89,7 +98,7 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
                 node.tree.create({ type: 'internal', parentId: node.id })
               }}
             >
-              +📁
+              <FolderPlus size={14} />
             </button>
             <button
               type="button"
@@ -99,7 +108,7 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
                 node.tree.create({ type: 'leaf', parentId: node.id })
               }}
             >
-              +📄
+              <FilePlus size={14} />
             </button>
           </>
         )}
@@ -111,7 +120,7 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
             node.edit()
           }}
         >
-          ✏️
+          <Pencil size={13} />
         </button>
         <button
           type="button"
@@ -123,7 +132,7 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
             }
           }}
         >
-          🗑️
+          <Trash2 size={13} />
         </button>
       </span>
     </div>
@@ -198,10 +207,11 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
         <strong>Chủ đề &amp; bài học</strong>
         <button
           type="button"
+          className="btn-add-topic"
           onClick={() => treeRef.current?.create({ type: 'internal', parentId: null })}
           title="Thêm chủ đề gốc"
         >
-          + Chủ đề
+          <Plus size={14} /> Chủ đề
         </button>
       </div>
       <div className="topic-tree-body" ref={containerRef}>

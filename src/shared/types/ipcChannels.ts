@@ -7,6 +7,7 @@ export const IpcChannels = {
   },
   lessons: {
     listAll: 'lessons:listAll',
+    listRecent: 'lessons:listRecent',
     get: 'lessons:get',
     create: 'lessons:create',
     update: 'lessons:update',
@@ -28,5 +29,8 @@ export const IpcChannels = {
     saveDraftQuestions: 'ai:saveDraftQuestions',
     listQuestionsByLesson: 'ai:listQuestionsByLesson',
     deleteQuestion: 'ai:deleteQuestion'
+  },
+  questionBank: {
+    countAll: 'questionBank:countAll'
   }
 } as const

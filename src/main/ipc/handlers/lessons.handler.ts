@@ -18,9 +18,15 @@ const updateLessonSchema = z.object({
 })
 
 const idSchema = z.object({ id: z.string() })
+const listRecentSchema = z.object({ limit: z.number().int().min(1).max(50) })
 
 export function registerLessonsHandlers(): void {
   ipcMain.handle(IpcChannels.lessons.listAll, () => lessonsRepo.listAllLessonSummaries())
+
+  ipcMain.handle(IpcChannels.lessons.listRecent, (_event, payload) => {
+    const { limit } = listRecentSchema.parse(payload)
+    return lessonsRepo.listRecentLessons(limit)
+  })
 
   ipcMain.handle(IpcChannels.lessons.get, (_event, payload) => {
     const { id } = idSchema.parse(payload)

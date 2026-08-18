@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { Sparkles } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { DraftQuestion } from '@shared/types/question'
+import { questionBankCountQueryKey } from '@renderer/queries/questionBank'
 import type { LessonWidgetProps } from '../lesson/widgetRegistry'
 
 function QuizAiSection({ lesson }: LessonWidgetProps): React.JSX.Element {
@@ -43,19 +45,25 @@ function QuizAiSection({ lesson }: LessonWidgetProps): React.JSX.Element {
     onSuccess: () => {
       setDraft(null)
       qc.invalidateQueries({ queryKey: savedQuestionsKey })
+      qc.invalidateQueries({ queryKey: questionBankCountQueryKey })
     }
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => window.api.ai.deleteQuestion(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: savedQuestionsKey })
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: savedQuestionsKey })
+      qc.invalidateQueries({ queryKey: questionBankCountQueryKey })
+    }
   })
 
   const cliStatus = availabilityQuery.data?.status
 
   return (
     <section className="lesson-widget quiz-ai-section">
-      <h3>Tạo bài kiểm tra bằng AI (từ bài học này)</h3>
+      <h3>
+        <Sparkles size={16} /> Tạo bài kiểm tra bằng AI (từ bài học này)
+      </h3>
 
       {cliStatus === 'not_found' && (
         <p className="quiz-ai-warning">
