@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Tree } from 'react-arborist'
 import { Folder, FolderOpen, FileText, FolderPlus, FilePlus, Pencil, Trash2, Plus } from 'lucide-react'
 import type {
-  NodeApi,
   TreeApi,
   CreateHandler,
-  RenameHandler,
   DeleteHandler,
   MoveHandler,
   NodeRendererProps
@@ -38,40 +36,79 @@ function useElementSize<T extends HTMLElement>() {
   return { ref, size }
 }
 
-function EditInput({ node }: { node: NodeApi<TreeNode> }): React.JSX.Element {
+// Doi ten KHONG dung co che edit noi tai cua react-arborist (node.edit()/
+// isEditing/submit()/reset()) vi co qua nhieu buoc gian tiep (setTimeout,
+// blur-tu-reset, store rieng) de kiem soat chac chan. Thay vao do, TopicTree
+// tu quan ly hoan toan trang thai dang sua bang React state va truyen xuong
+// qua Context cho tung dong (o nhap la controlled input - gia tri luon nam
+// trong tay React, khong the bi "mat ky tu" do remount/refetch/blur ben ngoai).
+interface EditState {
+  id: string
+  value: string
+}
+
+interface EditContextValue {
+  editing: EditState | null
+  setValue: (v: string) => void
+  commit: () => void
+  cancel: () => void
+  startEdit: (id: string, currentName: string) => void
+}
+
+const EditContext = createContext<EditContextValue | null>(null)
+
+function useEditContext(): EditContextValue {
+  const ctx = useContext(EditContext)
+  if (!ctx) throw new Error('EditContext missing')
+  return ctx
+}
+
+function EditInput({ nodeId }: { nodeId: string }): React.JSX.Element {
+  const { editing, setValue, commit, cancel } = useEditContext()
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const actionTakenRef = useRef(false)
 
   useEffect(() => {
     inputRef.current?.focus()
     inputRef.current?.select()
   }, [])
 
+  const runOnce = (fn: () => void): void => {
+    if (actionTakenRef.current) return
+    actionTakenRef.current = true
+    fn()
+  }
+
   return (
     <input
       ref={inputRef}
-      defaultValue={node.data.name}
+      value={editing?.id === nodeId ? editing.value : ''}
       className="tree-edit-input"
       onClick={(e) => e.stopPropagation()}
-      onBlur={() => node.reset()}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => runOnce(commit)}
       onKeyDown={(e) => {
-        // Chan moi phim lan ra container cua cay - tranh cac phim tat toan
-        // cuc cua react-arborist (vd phim "a"/"A" tao node moi, tim-theo-chu)
-        // vo tinh bat duoc trong luc dang go ten.
+        // Chan phim lan ra container cua cay de tranh phim tat toan cuc cua
+        // react-arborist (vd "a"/"A" tao node moi) bat nham trong luc go ten.
         e.stopPropagation()
-        if (e.key === 'Escape') node.reset()
-        if (e.key === 'Enter') node.submit(inputRef.current?.value || '')
+        if (e.key === 'Escape') runOnce(cancel)
+        if (e.key === 'Enter') runOnce(commit)
       }}
     />
   )
 }
 
 function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): React.JSX.Element {
+  const { editing, startEdit } = useEditContext()
+  const isEditingThis = editing?.id === node.id
+
   return (
     <div
       ref={dragHandle}
       style={style}
       className={`tree-row${node.isSelected ? ' tree-row-selected' : ''}`}
       onClick={() => {
+        if (isEditingThis) return
         if (node.isInternal) node.toggle()
       }}
     >
@@ -86,8 +123,8 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
           <FileText size={15} />
         )}
       </span>
-      {node.isEditing ? (
-        <EditInput node={node} />
+      {isEditingThis ? (
+        <EditInput nodeId={node.id} />
       ) : (
         <span className="tree-label">{node.data.name}</span>
       )}
@@ -121,7 +158,7 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
           title="Đổi tên"
           onClick={(e) => {
             e.stopPropagation()
-            node.edit()
+            startEdit(node.id, node.data.name)
           }}
         >
           <Pencil size={13} />
@@ -151,6 +188,7 @@ interface TopicTreeProps {
 function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.JSX.Element {
   const { ref: containerRef, size } = useElementSize<HTMLDivElement>()
   const treeRef = useRef<TreeApi<TreeNode> | undefined>(undefined)
+  const [editing, setEditing] = useState<EditState | null>(null)
 
   const topicsQuery = useTopics()
   const lessonsQuery = useLessons()
@@ -166,22 +204,42 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
     [topicsQuery.data, lessonsQuery.data]
   )
 
+  function findKind(id: string): 'topic' | 'lesson' | null {
+    if (topicsQuery.data?.some((t) => t.id === id)) return 'topic'
+    if (lessonsQuery.data?.some((l) => l.id === id)) return 'lesson'
+    return null
+  }
+
+  const editContextValue: EditContextValue = {
+    editing,
+    setValue: (value) => setEditing((prev) => (prev ? { ...prev, value } : prev)),
+    startEdit: (id, currentName) => setEditing({ id, value: currentName }),
+    cancel: () => setEditing(null),
+    commit: () => {
+      if (!editing) return
+      const { id, value } = editing
+      const name = value.trim()
+      setEditing(null)
+      if (!name) return
+      const kind = findKind(id)
+      if (kind === 'topic') {
+        updateTopic.mutate({ id, name })
+      } else if (kind === 'lesson') {
+        updateLesson.mutate({ id, title: name })
+      }
+    }
+  }
+
   const onCreate: CreateHandler<TreeNode> = async ({ parentId, type }) => {
     if (type === 'internal') {
       const topic = await createTopic.mutateAsync({ parentId, name: 'Chủ đề mới' })
+      setEditing({ id: topic.id, value: topic.name })
       return { id: topic.id, name: topic.name, kind: 'topic', children: [] }
     }
     if (!parentId) return null
     const lesson = await createLesson.mutateAsync({ topicId: parentId, title: 'Bài học mới' })
+    setEditing({ id: lesson.id, value: lesson.title })
     return { id: lesson.id, name: lesson.title, kind: 'lesson' }
-  }
-
-  const onRename: RenameHandler<TreeNode> = async ({ id, name, node }) => {
-    if (node.data.kind === 'topic') {
-      await updateTopic.mutateAsync({ id, name })
-    } else {
-      await updateLesson.mutateAsync({ id, title: name })
-    }
   }
 
   const onDelete: DeleteHandler<TreeNode> = async ({ nodes }) => {
@@ -220,33 +278,34 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
       </div>
       <div className="topic-tree-body" ref={containerRef}>
         {size.height > 0 && (
-          <Tree<TreeNode>
-            ref={treeRef}
-            data={data}
-            idAccessor="id"
-            childrenAccessor="children"
-            width={size.width}
-            height={size.height}
-            rowHeight={30}
-            indent={18}
-            openByDefault={false}
-            selection={selectedLessonId ?? undefined}
-            onCreate={onCreate}
-            onRename={onRename}
-            onDelete={onDelete}
-            onMove={onMove}
-            onSelect={(nodes) => {
-              const lessonNode = nodes.find((n) => n.data.kind === 'lesson')
-              onSelectLesson(lessonNode ? lessonNode.data.id : null)
-            }}
-            disableDrop={({ parentNode, dragNodes }) => {
-              // Bai hoc (leaf) khong the chua node con, va khong the tha vao goc cay
-              if (parentNode.isRoot) return dragNodes.some((n) => n.data.kind === 'lesson')
-              return parentNode.data.kind === 'lesson'
-            }}
-          >
-            {TreeNodeRow}
-          </Tree>
+          <EditContext.Provider value={editContextValue}>
+            <Tree<TreeNode>
+              ref={treeRef}
+              data={data}
+              idAccessor="id"
+              childrenAccessor="children"
+              width={size.width}
+              height={size.height}
+              rowHeight={30}
+              indent={18}
+              openByDefault={false}
+              selection={selectedLessonId ?? undefined}
+              onCreate={onCreate}
+              onDelete={onDelete}
+              onMove={onMove}
+              onSelect={(nodes) => {
+                const lessonNode = nodes.find((n) => n.data.kind === 'lesson')
+                onSelectLesson(lessonNode ? lessonNode.data.id : null)
+              }}
+              disableDrop={({ parentNode, dragNodes }) => {
+                // Bai hoc (leaf) khong the chua node con, va khong the tha vao goc cay
+                if (parentNode.isRoot) return dragNodes.some((n) => n.data.kind === 'lesson')
+                return parentNode.data.kind === 'lesson'
+              }}
+            >
+              {TreeNodeRow}
+            </Tree>
+          </EditContext.Provider>
         )}
       </div>
     </div>
