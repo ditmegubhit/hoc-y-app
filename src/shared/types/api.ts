@@ -10,6 +10,7 @@ import type { Attachment } from './attachment'
 import type { SearchResultGroup } from './search'
 import type { DraftQuestion, Question } from './question'
 import type { ClaudeCliStatus, GenerateQuizFromLessonResult } from './claudeCli'
+import type { ExamFile } from './examFile'
 
 export interface AppApi {
   appVersion: string
@@ -52,5 +53,10 @@ export interface AppApi {
   }
   questionBank: {
     countAll: () => Promise<number>
+  }
+  examFiles: {
+    list: () => Promise<ExamFile[]>
+    add: () => Promise<ExamFile | null>
+    remove: (id: string) => Promise<void>
   }
 }

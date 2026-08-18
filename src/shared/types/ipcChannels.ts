@@ -32,5 +32,10 @@ export const IpcChannels = {
   },
   questionBank: {
     countAll: 'questionBank:countAll'
+  },
+  examFiles: {
+    list: 'examFiles:list',
+    add: 'examFiles:add',
+    remove: 'examFiles:remove'
   }
 } as const

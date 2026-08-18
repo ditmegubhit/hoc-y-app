@@ -47,6 +47,11 @@ const api: AppApi = {
   },
   questionBank: {
     countAll: () => ipcRenderer.invoke(IpcChannels.questionBank.countAll)
+  },
+  examFiles: {
+    list: () => ipcRenderer.invoke(IpcChannels.examFiles.list),
+    add: () => ipcRenderer.invoke(IpcChannels.examFiles.add),
+    remove: (id) => ipcRenderer.invoke(IpcChannels.examFiles.remove, { id })
   }
 }
 

@@ -1,6 +1,7 @@
 import * as m001 from './001_topics_lessons'
 import * as m002 from './002_attachments_search'
 import * as m003 from './003_question_bank_quiz'
+import * as m004 from './004_exam_files_status'
 
 export interface Migration {
   id: string
@@ -9,4 +10,4 @@ export interface Migration {
 
 // Them migration moi cho tung milestone bang cach import va push vao day,
 // giu nguyen thu tu, khong sua lai migration cu da chay.
-export const migrations: Migration[] = [m001, m002, m003]
+export const migrations: Migration[] = [m001, m002, m003, m004]

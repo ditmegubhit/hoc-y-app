@@ -7,12 +7,14 @@ export function attachmentsDir(): string {
   return join(app.getPath('userData'), 'attachments')
 }
 
-export async function storeAttachmentFile(sourcePath: string): Promise<{
-  storedPath: string
-  fileName: string
-  fileSizeBytes: number
-}> {
-  const dir = attachmentsDir()
+export function examFilesDir(): string {
+  return join(app.getPath('userData'), 'examFiles')
+}
+
+async function storeFileIn(
+  dir: string,
+  sourcePath: string
+): Promise<{ storedPath: string; fileName: string; fileSizeBytes: number }> {
   await mkdir(dir, { recursive: true })
 
   const ext = extname(sourcePath)
@@ -21,4 +23,16 @@ export async function storeAttachmentFile(sourcePath: string): Promise<{
   const stats = await stat(storedPath)
 
   return { storedPath, fileName: basename(sourcePath), fileSizeBytes: stats.size }
+}
+
+export function storeAttachmentFile(
+  sourcePath: string
+): Promise<{ storedPath: string; fileName: string; fileSizeBytes: number }> {
+  return storeFileIn(attachmentsDir(), sourcePath)
+}
+
+export function storeExamFile(
+  sourcePath: string
+): Promise<{ storedPath: string; fileName: string; fileSizeBytes: number }> {
+  return storeFileIn(examFilesDir(), sourcePath)
 }

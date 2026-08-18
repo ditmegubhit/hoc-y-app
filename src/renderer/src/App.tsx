@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { GraduationCap } from 'lucide-react'
+import { GraduationCap, Settings, FileQuestion } from 'lucide-react'
 import TopicTree from './components/tree/TopicTree'
 import LessonWorkspacePage from './pages/LessonWorkspacePage'
 import TopicWorkspacePage from './pages/TopicWorkspacePage'
 import SearchResultsPage from './pages/SearchResultsPage'
 import HomePage from './pages/HomePage'
+import SettingsPage from './pages/SettingsPage'
+import ExamBankPage from './pages/ExamBankPage'
 import SearchBar from './components/search/SearchBar'
 
-type View = 'home' | 'lesson' | 'topic'
+type View = 'home' | 'lesson' | 'topic' | 'settings' | 'examBank'
 
 function App(): React.JSX.Element {
   const [view, setView] = useState<View>('home')
@@ -35,10 +37,36 @@ function App(): React.JSX.Element {
   return (
     <div className="app-layout">
       <aside className="app-sidebar">
-        <button type="button" className="app-logo" onClick={goHome}>
-          <GraduationCap size={20} />
-          <span>Học Y</span>
-        </button>
+        <div className="app-sidebar-header">
+          <button type="button" className="app-logo" onClick={goHome}>
+            <GraduationCap size={20} />
+            <span>Học Y</span>
+          </button>
+          <div className="app-nav-icons">
+            <button
+              type="button"
+              className={view === 'examBank' ? 'app-nav-icon-active' : ''}
+              title="Ngân hàng đề thi"
+              onClick={() => {
+                setView('examBank')
+                setSearchKeyword('')
+              }}
+            >
+              <FileQuestion size={17} />
+            </button>
+            <button
+              type="button"
+              className={view === 'settings' ? 'app-nav-icon-active' : ''}
+              title="Cài đặt"
+              onClick={() => {
+                setView('settings')
+                setSearchKeyword('')
+              }}
+            >
+              <Settings size={17} />
+            </button>
+          </div>
+        </div>
         <TopicTree
           selectedLessonId={selectedLessonId}
           onSelectLesson={handleSelectLesson}
@@ -57,6 +85,10 @@ function App(): React.JSX.Element {
             onSelectTopic={handleSelectTopic}
             onSelectLesson={handleSelectLesson}
           />
+        ) : view === 'settings' ? (
+          <SettingsPage />
+        ) : view === 'examBank' ? (
+          <ExamBankPage />
         ) : (
           <HomePage onSelectLesson={handleSelectLesson} />
         )}

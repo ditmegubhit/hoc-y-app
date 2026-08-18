@@ -1,4 +1,36 @@
 :root {
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+/* Mac dinh la Dark Mode (theo yeu cau) neu vi ly do nao do data-theme chua
+   duoc gan kip (vd CSS tai truoc khi main.tsx chay applyTheme()). */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-app: #1a1b23;
+  --bg-sidebar: #15161d;
+  --bg-main: #1a1b23;
+  --card-bg: #22232d;
+  --border: #33343f;
+  --border-soft: #2a2b35;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --accent-soft: #2e2f5c;
+  --accent-soft-hover: #383a6e;
+  --text: #e5e6ec;
+  --text-muted: #9497a8;
+  --text-faint: #6c6f80;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --danger: #f87171;
+  --success: #4ade80;
+  --warning-bg: #3b2f13;
+  --warning-border: #6b5218;
+  --warning-text: #fbbf24;
+}
+
+[data-theme='light'] {
   color-scheme: light;
   --bg-app: #f5f6fb;
   --bg-sidebar: #ffffff;
@@ -13,8 +45,6 @@
   --text: #1e2130;
   --text-muted: #6b7280;
   --text-faint: #9ca3af;
-  --radius: 10px;
-  --radius-sm: 6px;
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   --shadow-md: 0 4px 10px rgba(16, 24, 40, 0.08);
   --danger: #dc2626;
@@ -116,11 +146,17 @@ input[type='number']:focus {
   background: var(--bg-main);
 }
 
+.app-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 0.9rem 0.3rem;
+}
+
 .app-logo {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin: 0.9rem 0.9rem 0.3rem;
   padding: 0.5rem 0.6rem;
   border: none;
   background: transparent;
@@ -128,12 +164,33 @@ input[type='number']:focus {
   font-weight: 700;
   font-size: 1rem;
   border-radius: var(--radius-sm);
-  align-self: flex-start;
 }
 
 .app-logo:hover:not(:disabled) {
   background: var(--accent-soft);
   border-color: transparent;
+}
+
+.app-nav-icons {
+  display: flex;
+  gap: 2px;
+}
+
+.app-nav-icons button {
+  border: none;
+  background: transparent;
+  padding: 6px;
+  color: var(--text-faint);
+}
+
+.app-nav-icons button:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.app-nav-icons .app-nav-icon-active {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* ---------- Topic tree ---------- */
@@ -244,7 +301,7 @@ input[type='number']:focus {
 }
 
 .tree-actions button:hover:not(:disabled) {
-  background: #d9defb;
+  background: var(--accent-soft-hover);
   color: var(--accent);
 }
 
@@ -772,4 +829,88 @@ input[type='number']:focus {
   background: #b91c1c;
   border-color: #b91c1c;
   color: white;
+}
+
+/* ---------- Settings ---------- */
+
+.settings-page h1 {
+  margin-top: 0;
+  font-size: 1.4rem;
+}
+
+.settings-section {
+  margin-top: 1.5rem;
+}
+
+.settings-section h3 {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  margin-bottom: 0.7rem;
+}
+
+.theme-options {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.theme-option {
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.1rem 1.6rem;
+  font-weight: 600;
+}
+
+.theme-option-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ---------- Exam bank ---------- */
+
+.exam-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.2rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.exam-file-item {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 0.8rem 1rem;
+}
+
+.exam-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.exam-file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  overflow: hidden;
+}
+
+.exam-file-info strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exam-file-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
 }

@@ -1,0 +1,55 @@
+import { dialog } from 'electron'
+import { extname } from 'node:path'
+import { storeExamFile } from './fileStorage.service'
+import { extractText } from './textExtraction'
+import * as examFilesRepo from '../db/repositories/examFiles.repo'
+import type { ExamFile, ExamFileType } from '../../shared/types/examFile'
+
+const SUPPORTED: Record<string, ExamFileType> = {
+  '.pdf': 'pdf',
+  '.docx': 'docx',
+  '.pptx': 'pptx'
+}
+
+export async function pickAndAddExamFile(): Promise<ExamFile | null> {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'Đề thi', extensions: ['pdf', 'docx', 'pptx'] }]
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+
+  const sourcePath = result.filePaths[0]
+  const ext = extname(sourcePath).toLowerCase()
+  const fileType = SUPPORTED[ext]
+  if (!fileType) return null
+
+  const stored = await storeExamFile(sourcePath)
+  const examFile = examFilesRepo.createExamFile({
+    fileName: stored.fileName,
+    fileType,
+    storedPath: stored.storedPath,
+    fileSizeBytes: stored.fileSizeBytes
+  })
+
+  void extractAndSave(examFile.id, stored.storedPath, fileType)
+
+  return examFile
+}
+
+async function extractAndSave(id: string, storedPath: string, type: ExamFileType): Promise<void> {
+  try {
+    const text = await extractText(storedPath, type)
+    examFilesRepo.updateExtraction(id, 'done', text)
+  } catch (err) {
+    console.error('[examFiles] extraction failed:', err)
+    examFilesRepo.updateExtraction(id, 'failed', null)
+  }
+}
+
+export function listExamFiles(): ExamFile[] {
+  return examFilesRepo.listExamFiles()
+}
+
+export function removeExamFile(id: string): void {
+  examFilesRepo.deleteExamFile(id)
+}
