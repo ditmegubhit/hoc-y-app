@@ -21,5 +21,12 @@ export const IpcChannels = {
   },
   search: {
     query: 'search:query'
+  },
+  ai: {
+    checkAvailability: 'ai:checkAvailability',
+    generateQuizFromLesson: 'ai:generateQuizFromLesson',
+    saveDraftQuestions: 'ai:saveDraftQuestions',
+    listQuestionsByLesson: 'ai:listQuestionsByLesson',
+    deleteQuestion: 'ai:deleteQuestion'
   }
 } as const

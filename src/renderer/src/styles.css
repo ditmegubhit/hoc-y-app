@@ -283,3 +283,84 @@ body {
   cursor: pointer;
   font-size: 0.78rem;
 }
+
+.quiz-ai-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.quiz-ai-controls input {
+  width: 60px;
+  margin-left: 0.4rem;
+}
+
+.quiz-ai-controls button {
+  cursor: pointer;
+}
+
+.quiz-ai-warning {
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.quiz-ai-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.quiz-ai-draft {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+.quiz-ai-question {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.quiz-ai-question ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.quiz-option-correct {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.quiz-ai-draft-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.quiz-ai-draft-actions button {
+  cursor: pointer;
+}
+
+.quiz-ai-saved ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0;
+}
+
+.quiz-ai-saved li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.quiz-ai-saved li button {
+  cursor: pointer;
+  flex-shrink: 0;
+}

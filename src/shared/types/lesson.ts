@@ -28,4 +28,4 @@ export interface UpdateLessonInput {
 
 // Diem mo rong giao dien bai hoc (M1 plan): them widget moi sau nay
 // chi can dang ky vao widgetRegistry, khong sua kien truc chinh.
-export type LessonWidgetKind = 'attachments' | 'notes'
+export type LessonWidgetKind = 'attachments' | 'notes' | 'quizAi'

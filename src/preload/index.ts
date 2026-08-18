@@ -24,14 +24,25 @@ const api: AppApi = {
     remove: (id) => ipcRenderer.invoke(IpcChannels.attachments.remove, { id }),
     reextract: (id) => ipcRenderer.invoke(IpcChannels.attachments.reextract, { id }),
     onExtractionUpdated: (callback) => {
-      const listener = (_event: Electron.IpcRendererEvent, payload: { attachmentId: string }): void =>
-        callback(payload.attachmentId)
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { attachmentId: string }
+      ): void => callback(payload.attachmentId)
       ipcRenderer.on(IpcChannels.attachments.extractionUpdated, listener)
       return () => ipcRenderer.removeListener(IpcChannels.attachments.extractionUpdated, listener)
     }
   },
   search: {
     query: (keyword) => ipcRenderer.invoke(IpcChannels.search.query, { keyword })
+  },
+  ai: {
+    checkAvailability: () => ipcRenderer.invoke(IpcChannels.ai.checkAvailability),
+    generateQuizFromLesson: (input) =>
+      ipcRenderer.invoke(IpcChannels.ai.generateQuizFromLesson, input),
+    saveDraftQuestions: (input) => ipcRenderer.invoke(IpcChannels.ai.saveDraftQuestions, input),
+    listQuestionsByLesson: (lessonId) =>
+      ipcRenderer.invoke(IpcChannels.ai.listQuestionsByLesson, { lessonId }),
+    deleteQuestion: (id) => ipcRenderer.invoke(IpcChannels.ai.deleteQuestion, { id })
   }
 }
 

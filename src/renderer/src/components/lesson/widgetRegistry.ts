@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import type { Lesson, LessonWidgetKind } from '@shared/types/lesson'
 import NotesWidget from './widgets/NotesWidget'
 import AttachmentsWidget from './widgets/AttachmentsWidget'
+import QuizAiSection from '../quiz/QuizAiSection'
 
 export interface LessonWidgetProps {
   lesson: Lesson
@@ -11,7 +12,8 @@ export interface LessonWidgetProps {
 // chi can viet component + dang ky vao day + them vao defaultLessonLayout.
 export const lessonWidgetRegistry: Record<LessonWidgetKind, ComponentType<LessonWidgetProps>> = {
   attachments: AttachmentsWidget,
-  notes: NotesWidget
+  notes: NotesWidget,
+  quizAi: QuizAiSection
 }
 
-export const defaultLessonLayout: LessonWidgetKind[] = ['attachments', 'notes']
+export const defaultLessonLayout: LessonWidgetKind[] = ['attachments', 'notes', 'quizAi']
