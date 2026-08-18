@@ -47,6 +47,9 @@ const api: AppApi = {
   },
   questionBank: {
     countAll: () => ipcRenderer.invoke(IpcChannels.questionBank.countAll)
+  },
+  app: {
+    refreshFocus: () => ipcRenderer.invoke(IpcChannels.app.refreshFocus)
   }
 }
 
