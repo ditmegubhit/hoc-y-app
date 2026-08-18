@@ -17,11 +17,17 @@ function EditableTitle({ value, onSave, placeholder }: EditableTitleProps): Reac
   const actionTakenRef = useRef(false)
 
   useEffect(() => {
-    if (isEditing) {
-      actionTakenRef.current = false
+    if (!isEditing) return
+    actionTakenRef.current = false
+    // Workaround cho loi da biet cua Electron (input DOM doi luc mat kha
+    // nang nhan ky tu go moi, chi Backspace/Delete con hoat dong) - ep
+    // webContents nhan lai focus native TRUOC khi focus input, khong dung
+    // BrowserWindow.blur()/focus() nen khong gay nhap nhay active/inactive
+    // o cua so. Xem chi tiet trong main/ipc/handlers/app.handler.ts.
+    void window.api.app.refreshFocus().then(() => {
       inputRef.current?.focus()
       inputRef.current?.select()
-    }
+    })
   }, [isEditing])
 
   function startEdit(): void {
