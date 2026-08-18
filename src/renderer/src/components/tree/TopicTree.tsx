@@ -1,13 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Tree } from 'react-arborist'
 import { Folder, FolderOpen, FileText, FolderPlus, FilePlus, Pencil, Trash2, Plus } from 'lucide-react'
-import type {
-  TreeApi,
-  CreateHandler,
-  DeleteHandler,
-  MoveHandler,
-  NodeRendererProps
-} from 'react-arborist'
+import type { DeleteHandler, MoveHandler, NodeRendererProps } from 'react-arborist'
 import { useTopics, useCreateTopic, useUpdateTopic, useDeleteTopic } from '@renderer/queries/topics'
 import {
   useLessons,
@@ -36,12 +30,17 @@ function useElementSize<T extends HTMLElement>() {
   return { ref, size }
 }
 
-// Doi ten KHONG dung co che edit noi tai cua react-arborist (node.edit()/
-// isEditing/submit()/reset()) vi co qua nhieu buoc gian tiep (setTimeout,
-// blur-tu-reset, store rieng) de kiem soat chac chan. Thay vao do, TopicTree
-// tu quan ly hoan toan trang thai dang sua bang React state va truyen xuong
-// qua Context cho tung dong (o nhap la controlled input - gia tri luon nam
-// trong tay React, khong the bi "mat ky tu" do remount/refetch/blur ben ngoai).
+// Doi ten VA tao moi KHONG dung co che noi tai cua react-arborist
+// (node.edit()/tree.create()/isEditing/submit()/reset()). Thu vien nay, sau
+// khi tao xong 1 node, tu dong goi this.focus(data) roi setTimeout(() =>
+// this.edit(data)) - chuoi nay co the cuop focus/dispatch edit-state giua
+// luc component cua chung ta dang focus o nhap, gay mat ky tu go (da xac
+// nhan qua thuc te: doi ten node CO SAN hoat dong dung, chi node VUA TAO
+// bi loi - dung khi da khoanh vung ve dung cho tao node cua react-arborist).
+// Giai phap: TopicTree tu goi mutation tao/doi ten TRUC TIEP, khong di qua
+// tree.create()/node.edit() nua - cat dut hoan toan khoi co che focus/edit
+// noi bo cua thu vien. react-arborist chi con dung de: hien thi cay (data),
+// keo-tha (onMove), xoa (onDelete, qua node.tree.delete()).
 interface EditState {
   id: string
   value: string
@@ -53,6 +52,8 @@ interface EditContextValue {
   commit: () => void
   cancel: () => void
   startEdit: (id: string, currentName: string) => void
+  createTopicUnder: (parentId: string | null) => void
+  createLessonUnder: (topicId: string) => void
 }
 
 const EditContext = createContext<EditContextValue | null>(null)
@@ -99,7 +100,7 @@ function EditInput({ nodeId }: { nodeId: string }): React.JSX.Element {
 }
 
 function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): React.JSX.Element {
-  const { editing, startEdit } = useEditContext()
+  const { editing, startEdit, createTopicUnder, createLessonUnder } = useEditContext()
   const isEditingThis = editing?.id === node.id
 
   return (
@@ -136,7 +137,11 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
               title="Thêm chủ đề con"
               onClick={(e) => {
                 e.stopPropagation()
-                node.tree.create({ type: 'internal', parentId: node.id })
+                // Mo chu de cha truoc - neu dang dong thi node/o nhap vua tao
+                // se khong duoc render (an trong thu muc dong), o nhap se
+                // "bien mat" ngay sau khi tao trong luc dang go.
+                node.open()
+                createTopicUnder(node.id)
               }}
             >
               <FolderPlus size={14} />
@@ -146,7 +151,8 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
               title="Thêm bài học"
               onClick={(e) => {
                 e.stopPropagation()
-                node.tree.create({ type: 'leaf', parentId: node.id })
+                node.open()
+                createLessonUnder(node.id)
               }}
             >
               <FilePlus size={14} />
@@ -187,7 +193,6 @@ interface TopicTreeProps {
 
 function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.JSX.Element {
   const { ref: containerRef, size } = useElementSize<HTMLDivElement>()
-  const treeRef = useRef<TreeApi<TreeNode> | undefined>(undefined)
   const [editing, setEditing] = useState<EditState | null>(null)
 
   const topicsQuery = useTopics()
@@ -227,19 +232,19 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
       } else if (kind === 'lesson') {
         updateLesson.mutate({ id, title: name })
       }
+    },
+    createTopicUnder: (parentId) => {
+      createTopic.mutate(
+        { parentId, name: 'Chủ đề mới' },
+        { onSuccess: (topic) => setEditing({ id: topic.id, value: topic.name }) }
+      )
+    },
+    createLessonUnder: (topicId) => {
+      createLesson.mutate(
+        { topicId, title: 'Bài học mới' },
+        { onSuccess: (lesson) => setEditing({ id: lesson.id, value: lesson.title }) }
+      )
     }
-  }
-
-  const onCreate: CreateHandler<TreeNode> = async ({ parentId, type }) => {
-    if (type === 'internal') {
-      const topic = await createTopic.mutateAsync({ parentId, name: 'Chủ đề mới' })
-      setEditing({ id: topic.id, value: topic.name })
-      return { id: topic.id, name: topic.name, kind: 'topic', children: [] }
-    }
-    if (!parentId) return null
-    const lesson = await createLesson.mutateAsync({ topicId: parentId, title: 'Bài học mới' })
-    setEditing({ id: lesson.id, value: lesson.title })
-    return { id: lesson.id, name: lesson.title, kind: 'lesson' }
   }
 
   const onDelete: DeleteHandler<TreeNode> = async ({ nodes }) => {
@@ -270,7 +275,7 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
         <button
           type="button"
           className="btn-add-topic"
-          onClick={() => treeRef.current?.create({ type: 'internal', parentId: null })}
+          onClick={() => editContextValue.createTopicUnder(null)}
           title="Thêm chủ đề gốc"
         >
           <Plus size={14} /> Chủ đề
@@ -280,7 +285,6 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
         {size.height > 0 && (
           <EditContext.Provider value={editContextValue}>
             <Tree<TreeNode>
-              ref={treeRef}
               data={data}
               idAccessor="id"
               childrenAccessor="children"
@@ -290,7 +294,6 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
               indent={18}
               openByDefault={false}
               selection={selectedLessonId ?? undefined}
-              onCreate={onCreate}
               onDelete={onDelete}
               onMove={onMove}
               onSelect={(nodes) => {
