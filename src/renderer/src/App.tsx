@@ -1,8 +1,18 @@
+import { useState } from 'react'
+import TopicTree from './components/tree/TopicTree'
+import LessonWorkspacePage from './pages/LessonWorkspacePage'
+
 function App(): React.JSX.Element {
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null)
+
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem' }}>
-      <h1>Thách mày học Y giỏi hơn tao</h1>
-      <p>M1 scaffold — cửa sổ Electron + React + TypeScript đã chạy được.</p>
+    <div className="app-layout">
+      <aside className="app-sidebar">
+        <TopicTree selectedLessonId={selectedLessonId} onSelectLesson={setSelectedLessonId} />
+      </aside>
+      <main className="app-main">
+        <LessonWorkspacePage lessonId={selectedLessonId} />
+      </main>
     </div>
   )
 }

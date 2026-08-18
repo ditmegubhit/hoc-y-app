@@ -1,12 +1,22 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
+import { IpcChannels } from '../shared/types/ipcChannels'
+import type { AppApi } from '../shared/types/api'
 
-// M1: chưa có IPC nghiệp vụ nào — chỉ dựng khung expose an toàn.
-// Các namespace topics/lessons/attachments/search/ai/exam/quiz/automation
-// sẽ được thêm dần ở M2-M7 theo shared/types/ipcChannels.ts.
-const api = {
-  appVersion: process.env['npm_package_version'] ?? 'dev'
+const api: AppApi = {
+  appVersion: process.env['npm_package_version'] ?? 'dev',
+  topics: {
+    list: () => ipcRenderer.invoke(IpcChannels.topics.list),
+    create: (input) => ipcRenderer.invoke(IpcChannels.topics.create, input),
+    update: (input) => ipcRenderer.invoke(IpcChannels.topics.update, input),
+    delete: (id) => ipcRenderer.invoke(IpcChannels.topics.delete, { id })
+  },
+  lessons: {
+    listAll: () => ipcRenderer.invoke(IpcChannels.lessons.listAll),
+    get: (id) => ipcRenderer.invoke(IpcChannels.lessons.get, { id }),
+    create: (input) => ipcRenderer.invoke(IpcChannels.lessons.create, input),
+    update: (input) => ipcRenderer.invoke(IpcChannels.lessons.update, input),
+    delete: (id) => ipcRenderer.invoke(IpcChannels.lessons.delete, { id })
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)
-
-export type Api = typeof api

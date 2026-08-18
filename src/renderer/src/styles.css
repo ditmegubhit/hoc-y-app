@@ -1,0 +1,172 @@
+:root {
+  color-scheme: light;
+  --border: #d9dee3;
+  --bg-sidebar: #f7f8fa;
+  --bg-main: #ffffff;
+  --accent: #2563eb;
+  --text: #1f2430;
+  --text-muted: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  color: var(--text);
+}
+
+.app-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.app-sidebar {
+  width: 320px;
+  min-width: 240px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-sidebar);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem 2rem;
+  background: var(--bg-main);
+}
+
+.topic-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topic-tree-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.topic-tree-toolbar button {
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.topic-tree-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.88rem;
+}
+
+.tree-row:hover {
+  background: #eef1f4;
+}
+
+.tree-row-selected {
+  background: #dbe6fd;
+}
+
+.tree-icon {
+  flex-shrink: 0;
+}
+
+.tree-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-edit-input {
+  flex: 1;
+  font-size: 0.88rem;
+  padding: 1px 4px;
+}
+
+.tree-actions {
+  display: none;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.tree-row:hover .tree-actions {
+  display: flex;
+}
+
+.tree-actions button {
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+.tree-actions button:hover {
+  background: #d5dbe3;
+  border-radius: 3px;
+}
+
+.lesson-workspace-empty {
+  color: var(--text-muted);
+  padding-top: 2rem;
+}
+
+.lesson-workspace h2 {
+  margin-top: 0;
+}
+
+.lesson-widget {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.lesson-widget h3 {
+  margin-top: 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lesson-widget-placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.lesson-editor .ProseMirror {
+  min-height: 200px;
+  outline: none;
+  line-height: 1.6;
+}
+
+.lesson-editor-loading {
+  color: var(--text-muted);
+}
