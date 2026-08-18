@@ -16,6 +16,22 @@ const api: AppApi = {
     create: (input) => ipcRenderer.invoke(IpcChannels.lessons.create, input),
     update: (input) => ipcRenderer.invoke(IpcChannels.lessons.update, input),
     delete: (id) => ipcRenderer.invoke(IpcChannels.lessons.delete, { id })
+  },
+  attachments: {
+    listByLesson: (lessonId) =>
+      ipcRenderer.invoke(IpcChannels.attachments.listByLesson, { lessonId }),
+    add: (lessonId) => ipcRenderer.invoke(IpcChannels.attachments.add, { lessonId }),
+    remove: (id) => ipcRenderer.invoke(IpcChannels.attachments.remove, { id }),
+    reextract: (id) => ipcRenderer.invoke(IpcChannels.attachments.reextract, { id }),
+    onExtractionUpdated: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: { attachmentId: string }): void =>
+        callback(payload.attachmentId)
+      ipcRenderer.on(IpcChannels.attachments.extractionUpdated, listener)
+      return () => ipcRenderer.removeListener(IpcChannels.attachments.extractionUpdated, listener)
+    }
+  },
+  search: {
+    query: (keyword) => ipcRenderer.invoke(IpcChannels.search.query, { keyword })
   }
 }
 

@@ -170,3 +170,116 @@ body {
 .lesson-editor-loading {
   color: var(--text-muted);
 }
+
+.search-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.search-bar button {
+  cursor: pointer;
+}
+
+.search-results h2 {
+  margin-top: 0;
+}
+
+.search-result-group {
+  margin-bottom: 1.5rem;
+}
+
+.search-result-group h3 {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.search-result-group ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.search-result-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-main);
+  cursor: pointer;
+}
+
+.search-result-item:hover {
+  background: #f1f5fb;
+}
+
+.search-result-source {
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+.search-result-snippet {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.attachment-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.attachment-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-size {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.attachment-status {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.attachment-status-failed {
+  color: #b91c1c;
+}
+
+.attachment-status-done {
+  color: #15803d;
+}
+
+.attachment-item button {
+  cursor: pointer;
+  font-size: 0.78rem;
+}

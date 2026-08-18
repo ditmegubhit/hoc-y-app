@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { getDb } from '../index'
+import * as searchIndexRepo from './searchIndex.repo'
 import type { Topic, CreateTopicInput, UpdateTopicInput } from '../../../shared/types/topic'
 
 interface TopicRow {
@@ -82,6 +83,37 @@ export function updateTopic(input: UpdateTopicInput): Topic {
   return mapTopic(row)
 }
 
+function collectDescendantTopicIds(db: ReturnType<typeof getDb>, rootId: string): string[] {
+  const result: string[] = []
+  const queue = [rootId]
+  while (queue.length > 0) {
+    const current = queue.shift() as string
+    const children = db.prepare('SELECT id FROM topics WHERE parent_id = ?').all(current) as {
+      id: string
+    }[]
+    for (const child of children) {
+      result.push(child.id)
+      queue.push(child.id)
+    }
+  }
+  return result
+}
+
 export function deleteTopic(id: string): void {
-  getDb().prepare('DELETE FROM topics WHERE id = ?').run(id)
+  const db = getDb()
+  // Xoa topic se CASCADE xoa het chu de con + bai hoc + attachment trong DB quan he,
+  // nhung search_index (FTS5) khong ho tro FK nen phai don thu cong truoc khi xoa.
+  const allTopicIds = [id, ...collectDescendantTopicIds(db, id)]
+  const placeholders = allTopicIds.map(() => '?').join(',')
+  const lessonRows = db
+    .prepare(`SELECT id FROM lessons WHERE topic_id IN (${placeholders})`)
+    .all(...allTopicIds) as { id: string }[]
+
+  const deleteTx = db.transaction(() => {
+    for (const lesson of lessonRows) {
+      searchIndexRepo.deleteSearchIndexByLesson(lesson.id)
+    }
+    db.prepare('DELETE FROM topics WHERE id = ?').run(id)
+  })
+  deleteTx()
 }

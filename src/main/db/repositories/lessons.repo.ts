@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { getDb } from '../index'
+import * as searchIndexRepo from './searchIndex.repo'
 import type {
   Lesson,
   LessonSummary,
@@ -77,9 +78,27 @@ export function updateLesson(input: UpdateLessonInput): Lesson {
     `UPDATE lessons SET title = ?, notes_json = ?, notes_text = ?, topic_id = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ?`
   ).run(title, notesJson, notesText, topicId, sortOrder, input.id)
 
-  return getLesson(input.id) as Lesson
+  const updated = getLesson(input.id) as Lesson
+  if (updated.notesText && updated.notesText.trim()) {
+    searchIndexRepo.upsertSearchIndex({
+      sourceType: 'lesson_note',
+      sourceId: updated.id,
+      lessonId: updated.id,
+      topicId: updated.topicId,
+      title: updated.title,
+      content: updated.notesText
+    })
+  } else {
+    searchIndexRepo.deleteSearchIndex('lesson_note', updated.id)
+  }
+  return updated
 }
 
 export function deleteLesson(id: string): void {
-  getDb().prepare('DELETE FROM lessons WHERE id = ?').run(id)
+  const db = getDb()
+  const deleteTx = db.transaction(() => {
+    searchIndexRepo.deleteSearchIndexByLesson(id)
+    db.prepare('DELETE FROM lessons WHERE id = ?').run(id)
+  })
+  deleteTx()
 }
