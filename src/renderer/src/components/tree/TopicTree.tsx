@@ -158,26 +158,13 @@ function TopicTree({
     onCreateTopicUnder: (parentId) => {
       createTopic.mutate(
         { parentId, name: 'Chủ đề mới' },
-        {
-          onSuccess: (topic) => {
-            onSelectTopic(topic.id)
-            // Workaround: refresh focus native de tranh loi o nhap doi ten
-            // chi nhan Backspace/Delete sau 1 chuoi tao-moi + dieu huong
-            // nhanh (xem giai thich chi tiet trong app.handler.ts).
-            void window.api.app.refreshFocus()
-          }
-        }
+        { onSuccess: (topic) => onSelectTopic(topic.id) }
       )
     },
     onCreateLessonUnder: (topicId) => {
       createLesson.mutate(
         { topicId, title: 'Bài học mới' },
-        {
-          onSuccess: (lesson) => {
-            onSelectLesson(lesson.id)
-            void window.api.app.refreshFocus()
-          }
-        }
+        { onSuccess: (lesson) => onSelectLesson(lesson.id) }
       )
     }
   }

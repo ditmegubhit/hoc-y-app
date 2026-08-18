@@ -4,7 +4,6 @@ import { registerAttachmentsHandlers } from './handlers/attachments.handler'
 import { registerSearchHandlers } from './handlers/search.handler'
 import { registerAiHandlers } from './handlers/ai.handler'
 import { registerQuestionBankHandlers } from './handlers/questionBank.handler'
-import { registerAppHandlers } from './handlers/app.handler'
 
 export function registerIpcHandlers(): void {
   registerTopicsHandlers()
@@ -13,5 +12,4 @@ export function registerIpcHandlers(): void {
   registerSearchHandlers()
   registerAiHandlers()
   registerQuestionBankHandlers()
-  registerAppHandlers()
 }

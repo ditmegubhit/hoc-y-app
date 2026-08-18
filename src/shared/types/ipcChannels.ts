@@ -32,8 +32,5 @@ export const IpcChannels = {
   },
   questionBank: {
     countAll: 'questionBank:countAll'
-  },
-  app: {
-    refreshFocus: 'app:refreshFocus'
   }
 } as const
