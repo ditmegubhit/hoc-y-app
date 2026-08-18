@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Paperclip, Plus, RotateCcw, X } from 'lucide-react'
 import {
@@ -8,6 +8,7 @@ import {
   useRemoveAttachment,
   useReextractAttachment
 } from '@renderer/queries/attachments'
+import ConfirmDialog from '@renderer/components/common/ConfirmDialog'
 import type { LessonWidgetProps } from '../widgetRegistry'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -29,6 +30,9 @@ function AttachmentsWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
   const addAttachment = useAddAttachment(lesson.id)
   const removeAttachment = useRemoveAttachment(lesson.id)
   const reextractAttachment = useReextractAttachment(lesson.id)
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; fileName: string } | null>(
+    null
+  )
 
   useEffect(() => {
     const unsubscribe = window.api.attachments.onExtractionUpdated(() => {
@@ -75,17 +79,23 @@ function AttachmentsWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
             <button
               type="button"
               title="Xoá"
-              onClick={() => {
-                if (window.confirm(`Xoá file "${att.fileName}"?`)) {
-                  removeAttachment.mutate(att.id)
-                }
-              }}
+              onClick={() => setPendingDelete({ id: att.id, fileName: att.fileName })}
             >
               <X size={13} />
             </button>
           </li>
         ))}
       </ul>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Xác nhận xoá"
+        message={pendingDelete ? `Xoá file "${pendingDelete.fileName}"?` : ''}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) removeAttachment.mutate(pendingDelete.id)
+          setPendingDelete(null)
+        }}
+      />
     </section>
   )
 }

@@ -723,3 +723,53 @@ input[type='number']:focus {
 .quiz-ai-saved li:last-child {
   border-bottom: none;
 }
+
+/* ---------- Confirm dialog (thay window.confirm) ---------- */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 30, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.confirm-dialog {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 1.3rem 1.4rem;
+  width: 320px;
+  max-width: 90vw;
+}
+
+.confirm-dialog h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.confirm-dialog p {
+  margin: 0 0 1.1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: white;
+}

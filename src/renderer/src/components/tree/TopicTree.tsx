@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Tree } from 'react-arborist'
 import { Folder, FolderOpen, FileText, FolderPlus, FilePlus, Trash2, Plus } from 'lucide-react'
-import type { DeleteHandler, MoveHandler, NodeRendererProps } from 'react-arborist'
+import type { DeleteHandler, MoveHandler, NodeRendererProps, TreeApi } from 'react-arborist'
 import { useTopics, useCreateTopic, useUpdateTopic, useDeleteTopic } from '@renderer/queries/topics'
 import {
   useLessons,
@@ -9,6 +9,7 @@ import {
   useUpdateLesson,
   useDeleteLesson
 } from '@renderer/queries/lessons'
+import ConfirmDialog from '@renderer/components/common/ConfirmDialog'
 import { buildTree, type TreeNode } from './treeUtils'
 
 // Cay chi con lam nhiem vu: hien thi + dieu huong + tao moi + xoa + keo-tha.
@@ -26,6 +27,7 @@ interface TreeActionsContextValue {
   onSelectTopic: (topicId: string) => void
   onCreateTopicUnder: (parentId: string | null) => void
   onCreateLessonUnder: (topicId: string) => void
+  requestDelete: (id: string, name: string) => void
 }
 
 const TreeActionsContext = createContext<TreeActionsContextValue | null>(null)
@@ -56,7 +58,8 @@ function useElementSize<T extends HTMLElement>() {
 }
 
 function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): React.JSX.Element {
-  const { onSelectTopic, onCreateTopicUnder, onCreateLessonUnder } = useTreeActions()
+  const { onSelectTopic, onCreateTopicUnder, onCreateLessonUnder, requestDelete } =
+    useTreeActions()
 
   return (
     <div
@@ -114,9 +117,7 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
           title="Xoá"
           onClick={(e) => {
             e.stopPropagation()
-            if (window.confirm(`Xoá "${node.data.name}"?`)) {
-              node.tree.delete(node.id)
-            }
+            requestDelete(node.id, node.data.name)
           }}
         >
           <Trash2 size={13} />
@@ -138,6 +139,8 @@ function TopicTree({
   onSelectTopic
 }: TopicTreeProps): React.JSX.Element {
   const { ref: containerRef, size } = useElementSize<HTMLDivElement>()
+  const treeRef = useRef<TreeApi<TreeNode> | undefined>(undefined)
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null)
 
   const topicsQuery = useTopics()
   const lessonsQuery = useLessons()
@@ -166,7 +169,11 @@ function TopicTree({
     },
     onCreateLessonUnder: (topicId) => {
       createLesson.mutate({ topicId, title: 'Bài học mới' })
-    }
+    },
+    // Khong dung window.confirm() - day la nguyen nhan chinh gay loi Chromium
+    // mat kha nang go ky tu vao input duoc focus ngay sau do (xem
+    // ConfirmDialog.tsx). Dung hop thoai tu ve thay the.
+    requestDelete: (id, name) => setPendingDelete({ id, name })
   }
 
   const onDelete: DeleteHandler<TreeNode> = async ({ nodes }) => {
@@ -206,6 +213,7 @@ function TopicTree({
         {size.height > 0 && (
           <TreeActionsContext.Provider value={treeActions}>
             <Tree<TreeNode>
+              ref={treeRef}
               data={data}
               idAccessor="id"
               childrenAccessor="children"
@@ -232,6 +240,16 @@ function TopicTree({
           </TreeActionsContext.Provider>
         )}
       </div>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Xác nhận xoá"
+        message={pendingDelete ? `Xoá "${pendingDelete.name}"?` : ''}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) treeRef.current?.delete(pendingDelete.id)
+          setPendingDelete(null)
+        }}
+      />
     </div>
   )
 }

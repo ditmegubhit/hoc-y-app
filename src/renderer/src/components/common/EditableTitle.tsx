@@ -19,15 +19,17 @@ function EditableTitle({ value, onSave, placeholder }: EditableTitleProps): Reac
   useEffect(() => {
     if (!isEditing) return
     actionTakenRef.current = false
-    // Workaround cho loi da biet cua Electron (input DOM doi luc mat kha
-    // nang nhan ky tu go moi, chi Backspace/Delete con hoat dong) - ep
-    // webContents nhan lai focus native TRUOC khi focus input, khong dung
-    // BrowserWindow.blur()/focus() nen khong gay nhap nhay active/inactive
-    // o cua so. Xem chi tiet trong main/ipc/handlers/app.handler.ts.
-    void window.api.app.refreshFocus().then(() => {
+    // Hoan 1 khung hinh truoc khi focus (thay vi focus ngay trong cung
+    // useEffect) - giam rui ro loi Chromium/Electron da biet (input tu dong
+    // focus ngay sau khi thay noi dung DOM doi luc mat kha nang nhan ky tu
+    // go moi, chi Backspace/Delete con hoat dong - electron/electron#40212).
+    // Nguyen nhan chinh (hop thoai window.confirm()) da duoc loai bo o
+    // ConfirmDialog.tsx; day la lop phong ve them cho phan con lai.
+    const raf = requestAnimationFrame(() => {
       inputRef.current?.focus()
       inputRef.current?.select()
     })
+    return () => cancelAnimationFrame(raf)
   }, [isEditing])
 
   function startEdit(): void {

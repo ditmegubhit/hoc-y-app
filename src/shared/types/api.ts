@@ -53,7 +53,4 @@ export interface AppApi {
   questionBank: {
     countAll: () => Promise<number>
   }
-  app: {
-    refreshFocus: () => Promise<void>
-  }
 }
