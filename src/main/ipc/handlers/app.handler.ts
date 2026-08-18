@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { IpcChannels } from '../../../shared/types/ipcChannels'
 
 export function registerAppHandlers(): void {
@@ -7,15 +7,25 @@ export function registerAppHandlers(): void {
   // input duoc mount/unmount nhanh, input DOM mat kha nang nhan ky tu go
   // moi (chi Backspace/Delete van hoat dong) - focus() tu JS khong sua duoc
   // vi day la loi lech trang thai o tang Chromium/native, khong phai loi
-  // logic React. Cong dong chi ghi nhan BrowserWindow.blur()+focus() la
-  // cach sua (nhung gay nhap nhay active/inactive tieu de cua so).
+  // logic React.
   //
-  // Dung webContents.focus() thay vi BrowserWindow.blur()/focus() - day la
-  // API rieng, chi tac dong "view nao ben trong cua so dang nhan input",
-  // KHONG dung den trang thai active/inactive cua ca cua so o tang OS nen
-  // khong gay hieu ung nhin thay duoc. Chua chac chan hieu qua tuong duong
-  // BrowserWindow.blur()+focus() - can user xac nhan.
+  // Da thu qua 2 buoc, ca 2 deu KHONG du:
+  //  1. webContents.focus() (event.sender.focus()) don le - khong sua duoc.
+  //  2. DOM element.blur()/focus() thuan JS trong renderer - khong sua duoc.
+  // Da xac nhan CHI CO BrowserWindow.blur()+focus() (that su doi trang
+  // thai active/inactive cua ca cua so o tang OS) moi sua duoc loi, nhung
+  // ban truoc dung setTimeout 40-60ms giua 2 lenh gay nhap nhay tieu de
+  // nhin thay duoc.
+  //
+  // Thu o day: goi blur() roi focus() NGAY LAP TUC, khong co do tre nao
+  // giua 2 lenh (khong setTimeout) - hy vong OS chua kip ve lai frame
+  // "inactive" truoc khi focus() duoc goi lai, nen khong nhap nhay, nhung
+  // van du de Chromium chay lai chu trinh xu ly blur/focus can thiet de
+  // dong bo lai trang thai nhap lieu.
   ipcMain.handle(IpcChannels.app.refreshFocus, (event) => {
-    event.sender.focus()
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return
+    win.blur()
+    win.focus()
   })
 }
