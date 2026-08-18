@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Tree } from 'react-arborist'
-import { Folder, FolderOpen, FileText, FolderPlus, FilePlus, Pencil, Trash2, Plus } from 'lucide-react'
+import { Folder, FolderOpen, FileText, FolderPlus, FilePlus, Trash2, Plus } from 'lucide-react'
 import type { DeleteHandler, MoveHandler, NodeRendererProps } from 'react-arborist'
 import { useTopics, useCreateTopic, useUpdateTopic, useDeleteTopic } from '@renderer/queries/topics'
 import {
@@ -10,6 +10,31 @@ import {
   useDeleteLesson
 } from '@renderer/queries/lessons'
 import { buildTree, type TreeNode } from './treeUtils'
+
+// Cay chi con lam nhiem vu: hien thi + dieu huong + tao moi + xoa + keo-tha.
+// Doi ten KHONG con nam trong cay nua (chuyen sang trang lam viec qua
+// EditableTitle) - vi o nhap ten song ben trong danh sach ao hoa cua
+// react-arborist/react-window tung gay loi mat ky tu go khong the truy ra
+// nguyen nhan chac chan du da vai lan vien lai co che edit rieng.
+//
+// Cac callback dieu huong/tao moi truyen xuong dong qua Context (khong phai
+// props/closure inline) de giu component render-prop (`children={TreeNodeRow}`)
+// la MOT reference on dinh xuyen suot - dung 1 arrow function inline lam
+// children se khien react-arborist coi day la component moi moi lan render,
+// gay remount toan bo cac dong.
+interface TreeActionsContextValue {
+  onSelectTopic: (topicId: string) => void
+  onCreateTopicUnder: (parentId: string | null) => void
+  onCreateLessonUnder: (topicId: string) => void
+}
+
+const TreeActionsContext = createContext<TreeActionsContextValue | null>(null)
+
+function useTreeActions(): TreeActionsContextValue {
+  const ctx = useContext(TreeActionsContext)
+  if (!ctx) throw new Error('TreeActionsContext missing')
+  return ctx
+}
 
 function useElementSize<T extends HTMLElement>() {
   const ref = useRef<T | null>(null)
@@ -30,78 +55,8 @@ function useElementSize<T extends HTMLElement>() {
   return { ref, size }
 }
 
-// Doi ten VA tao moi KHONG dung co che noi tai cua react-arborist
-// (node.edit()/tree.create()/isEditing/submit()/reset()). Thu vien nay, sau
-// khi tao xong 1 node, tu dong goi this.focus(data) roi setTimeout(() =>
-// this.edit(data)) - chuoi nay co the cuop focus/dispatch edit-state giua
-// luc component cua chung ta dang focus o nhap, gay mat ky tu go (da xac
-// nhan qua thuc te: doi ten node CO SAN hoat dong dung, chi node VUA TAO
-// bi loi - dung khi da khoanh vung ve dung cho tao node cua react-arborist).
-// Giai phap: TopicTree tu goi mutation tao/doi ten TRUC TIEP, khong di qua
-// tree.create()/node.edit() nua - cat dut hoan toan khoi co che focus/edit
-// noi bo cua thu vien. react-arborist chi con dung de: hien thi cay (data),
-// keo-tha (onMove), xoa (onDelete, qua node.tree.delete()).
-interface EditState {
-  id: string
-  value: string
-}
-
-interface EditContextValue {
-  editing: EditState | null
-  setValue: (v: string) => void
-  commit: () => void
-  cancel: () => void
-  startEdit: (id: string, currentName: string) => void
-  createTopicUnder: (parentId: string | null) => void
-  createLessonUnder: (topicId: string) => void
-}
-
-const EditContext = createContext<EditContextValue | null>(null)
-
-function useEditContext(): EditContextValue {
-  const ctx = useContext(EditContext)
-  if (!ctx) throw new Error('EditContext missing')
-  return ctx
-}
-
-function EditInput({ nodeId }: { nodeId: string }): React.JSX.Element {
-  const { editing, setValue, commit, cancel } = useEditContext()
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const actionTakenRef = useRef(false)
-
-  useEffect(() => {
-    inputRef.current?.focus()
-    inputRef.current?.select()
-  }, [])
-
-  const runOnce = (fn: () => void): void => {
-    if (actionTakenRef.current) return
-    actionTakenRef.current = true
-    fn()
-  }
-
-  return (
-    <input
-      ref={inputRef}
-      value={editing?.id === nodeId ? editing.value : ''}
-      className="tree-edit-input"
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={() => runOnce(commit)}
-      onKeyDown={(e) => {
-        // Chan phim lan ra container cua cay de tranh phim tat toan cuc cua
-        // react-arborist (vd "a"/"A" tao node moi) bat nham trong luc go ten.
-        e.stopPropagation()
-        if (e.key === 'Escape') runOnce(cancel)
-        if (e.key === 'Enter') runOnce(commit)
-      }}
-    />
-  )
-}
-
 function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): React.JSX.Element {
-  const { editing, startEdit, createTopicUnder, createLessonUnder } = useEditContext()
-  const isEditingThis = editing?.id === node.id
+  const { onSelectTopic, onCreateTopicUnder, onCreateLessonUnder } = useTreeActions()
 
   return (
     <div
@@ -109,8 +64,10 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
       style={style}
       className={`tree-row${node.isSelected ? ' tree-row-selected' : ''}`}
       onClick={() => {
-        if (isEditingThis) return
-        if (node.isInternal) node.toggle()
+        if (node.data.kind === 'topic') {
+          node.toggle()
+          onSelectTopic(node.id)
+        }
       }}
     >
       <span className="tree-icon">
@@ -124,11 +81,7 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
           <FileText size={15} />
         )}
       </span>
-      {isEditingThis ? (
-        <EditInput nodeId={node.id} />
-      ) : (
-        <span className="tree-label">{node.data.name}</span>
-      )}
+      <span className="tree-label">{node.data.name}</span>
       <span className="tree-actions">
         {node.data.kind === 'topic' && (
           <>
@@ -137,11 +90,8 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
               title="Thêm chủ đề con"
               onClick={(e) => {
                 e.stopPropagation()
-                // Mo chu de cha truoc - neu dang dong thi node/o nhap vua tao
-                // se khong duoc render (an trong thu muc dong), o nhap se
-                // "bien mat" ngay sau khi tao trong luc dang go.
                 node.open()
-                createTopicUnder(node.id)
+                onCreateTopicUnder(node.id)
               }}
             >
               <FolderPlus size={14} />
@@ -152,23 +102,13 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
               onClick={(e) => {
                 e.stopPropagation()
                 node.open()
-                createLessonUnder(node.id)
+                onCreateLessonUnder(node.id)
               }}
             >
               <FilePlus size={14} />
             </button>
           </>
         )}
-        <button
-          type="button"
-          title="Đổi tên"
-          onClick={(e) => {
-            e.stopPropagation()
-            startEdit(node.id, node.data.name)
-          }}
-        >
-          <Pencil size={13} />
-        </button>
         <button
           type="button"
           title="Xoá"
@@ -188,12 +128,16 @@ function TreeNodeRow({ node, style, dragHandle }: NodeRendererProps<TreeNode>): 
 
 interface TopicTreeProps {
   selectedLessonId: string | null
-  onSelectLesson: (lessonId: string | null) => void
+  onSelectLesson: (lessonId: string) => void
+  onSelectTopic: (topicId: string) => void
 }
 
-function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.JSX.Element {
+function TopicTree({
+  selectedLessonId,
+  onSelectLesson,
+  onSelectTopic
+}: TopicTreeProps): React.JSX.Element {
   const { ref: containerRef, size } = useElementSize<HTMLDivElement>()
-  const [editing, setEditing] = useState<EditState | null>(null)
 
   const topicsQuery = useTopics()
   const lessonsQuery = useLessons()
@@ -209,40 +153,18 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
     [topicsQuery.data, lessonsQuery.data]
   )
 
-  function findKind(id: string): 'topic' | 'lesson' | null {
-    if (topicsQuery.data?.some((t) => t.id === id)) return 'topic'
-    if (lessonsQuery.data?.some((l) => l.id === id)) return 'lesson'
-    return null
-  }
-
-  const editContextValue: EditContextValue = {
-    editing,
-    setValue: (value) => setEditing((prev) => (prev ? { ...prev, value } : prev)),
-    startEdit: (id, currentName) => setEditing({ id, value: currentName }),
-    cancel: () => setEditing(null),
-    commit: () => {
-      if (!editing) return
-      const { id, value } = editing
-      const name = value.trim()
-      setEditing(null)
-      if (!name) return
-      const kind = findKind(id)
-      if (kind === 'topic') {
-        updateTopic.mutate({ id, name })
-      } else if (kind === 'lesson') {
-        updateLesson.mutate({ id, title: name })
-      }
-    },
-    createTopicUnder: (parentId) => {
+  const treeActions: TreeActionsContextValue = {
+    onSelectTopic,
+    onCreateTopicUnder: (parentId) => {
       createTopic.mutate(
         { parentId, name: 'Chủ đề mới' },
-        { onSuccess: (topic) => setEditing({ id: topic.id, value: topic.name }) }
+        { onSuccess: (topic) => onSelectTopic(topic.id) }
       )
     },
-    createLessonUnder: (topicId) => {
+    onCreateLessonUnder: (topicId) => {
       createLesson.mutate(
         { topicId, title: 'Bài học mới' },
-        { onSuccess: (lesson) => setEditing({ id: lesson.id, value: lesson.title }) }
+        { onSuccess: (lesson) => onSelectLesson(lesson.id) }
       )
     }
   }
@@ -254,7 +176,6 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
       } else {
         await deleteLesson.mutateAsync(node.data.id)
       }
-      if (selectedLessonId === node.data.id) onSelectLesson(null)
     }
   }
 
@@ -275,7 +196,7 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
         <button
           type="button"
           className="btn-add-topic"
-          onClick={() => editContextValue.createTopicUnder(null)}
+          onClick={() => treeActions.onCreateTopicUnder(null)}
           title="Thêm chủ đề gốc"
         >
           <Plus size={14} /> Chủ đề
@@ -283,7 +204,7 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
       </div>
       <div className="topic-tree-body" ref={containerRef}>
         {size.height > 0 && (
-          <EditContext.Provider value={editContextValue}>
+          <TreeActionsContext.Provider value={treeActions}>
             <Tree<TreeNode>
               data={data}
               idAccessor="id"
@@ -298,7 +219,7 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
               onMove={onMove}
               onSelect={(nodes) => {
                 const lessonNode = nodes.find((n) => n.data.kind === 'lesson')
-                onSelectLesson(lessonNode ? lessonNode.data.id : null)
+                if (lessonNode) onSelectLesson(lessonNode.data.id)
               }}
               disableDrop={({ parentNode, dragNodes }) => {
                 // Bai hoc (leaf) khong the chua node con, va khong the tha vao goc cay
@@ -308,7 +229,7 @@ function TopicTree({ selectedLessonId, onSelectLesson }: TopicTreeProps): React.
             >
               {TreeNodeRow}
             </Tree>
-          </EditContext.Provider>
+          </TreeActionsContext.Provider>
         )}
       </div>
     </div>

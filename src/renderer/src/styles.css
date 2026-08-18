@@ -398,6 +398,68 @@ input[type='number']:focus {
   margin-top: 0;
 }
 
+.editable-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  padding: 0.2rem 0;
+  margin: 0 0 1rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  max-width: 100%;
+}
+
+.editable-title:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+}
+
+.editable-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editable-title-icon {
+  color: var(--text-faint);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.editable-title:hover .editable-title-icon {
+  opacity: 1;
+}
+
+.editable-title-input {
+  font-size: 1.4rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  margin: 0 0 1rem;
+  width: 100%;
+  max-width: 480px;
+}
+
+.topic-children-section {
+  margin-bottom: 1.5rem;
+}
+
+.topic-children-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
 .lesson-widget {
   background: var(--card-bg);
   border: 1px solid var(--border);
