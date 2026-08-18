@@ -153,19 +153,19 @@ function TopicTree({
     [topicsQuery.data, lessonsQuery.data]
   )
 
+  // Khong tu dong dieu huong sang trang lam viec ngay sau khi tao: chuoi
+  // "tao qua IPC -> dieu huong ngay lap tuc" la dieu kien gay ra loi Chromium
+  // lech focus ban phim (input moi chi nhan Backspace/Delete). Tao xong, muc
+  // moi xuat hien trong cay (topic cha da duoc mo qua node.open() o duoi),
+  // nguoi dung tu bam vao de doi ten khi san sang - tranh han dieu kien gay
+  // loi thay vi va no sau do.
   const treeActions: TreeActionsContextValue = {
     onSelectTopic,
     onCreateTopicUnder: (parentId) => {
-      createTopic.mutate(
-        { parentId, name: 'Chủ đề mới' },
-        { onSuccess: (topic) => onSelectTopic(topic.id) }
-      )
+      createTopic.mutate({ parentId, name: 'Chủ đề mới' })
     },
     onCreateLessonUnder: (topicId) => {
-      createLesson.mutate(
-        { topicId, title: 'Bài học mới' },
-        { onSuccess: (lesson) => onSelectLesson(lesson.id) }
-      )
+      createLesson.mutate({ topicId, title: 'Bài học mới' })
     }
   }
 

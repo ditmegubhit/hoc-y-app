@@ -17,21 +17,11 @@ function EditableTitle({ value, onSave, placeholder }: EditableTitleProps): Reac
   const actionTakenRef = useRef(false)
 
   useEffect(() => {
-    if (!isEditing) return
-    actionTakenRef.current = false
-    const el = inputRef.current
-    if (!el) return
-    // Blur roi focus lai NGAY TRONG TRINH DUYET (khong dung IPC/BrowserWindow
-    // - khong co bat ky hieu ung hinh anh nao o cua so) truoc khi focus that.
-    // Sau 1 chuoi tao-moi + dieu huong nhanh, Chromium doi luc chi nhan
-    // Backspace/Delete o input moi mount ma khong nhan ky tu go moi; ep 1
-    // chu ky blur/focus ngay tren chinh input nay (thay vi ca cua so) co the
-    // du de trinh duyet dong bo lai trang thai nhap lieu.
-    el.blur()
-    requestAnimationFrame(() => {
-      el.focus()
-      el.select()
-    })
+    if (isEditing) {
+      actionTakenRef.current = false
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
   }, [isEditing])
 
   function startEdit(): void {
