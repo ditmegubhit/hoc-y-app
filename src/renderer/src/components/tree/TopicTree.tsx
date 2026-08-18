@@ -54,6 +54,10 @@ function EditInput({ node }: { node: NodeApi<TreeNode> }): React.JSX.Element {
       onClick={(e) => e.stopPropagation()}
       onBlur={() => node.reset()}
       onKeyDown={(e) => {
+        // Chan moi phim lan ra container cua cay - tranh cac phim tat toan
+        // cuc cua react-arborist (vd phim "a"/"A" tao node moi, tim-theo-chu)
+        // vo tinh bat duoc trong luc dang go ten.
+        e.stopPropagation()
         if (e.key === 'Escape') node.reset()
         if (e.key === 'Enter') node.submit(inputRef.current?.value || '')
       }}

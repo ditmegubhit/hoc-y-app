@@ -1,9 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { CreateLessonInput, UpdateLessonInput } from '@shared/types/lesson'
+import type { LessonSummary, CreateLessonInput, UpdateLessonInput } from '@shared/types/lesson'
 
 export const lessonsQueryKey = ['lessons'] as const
 export const lessonQueryKey = (id: string) => ['lessons', id] as const
 export const recentLessonsQueryKey = ['lessons', 'recent'] as const
+
+function toSummary(lesson: {
+  id: string
+  topicId: string
+  title: string
+  sortOrder: number
+}): LessonSummary {
+  return { id: lesson.id, topicId: lesson.topicId, title: lesson.title, sortOrder: lesson.sortOrder }
+}
 
 export function useLessons() {
   return useQuery({ queryKey: lessonsQueryKey, queryFn: () => window.api.lessons.listAll() })
@@ -28,8 +37,13 @@ export function useCreateLesson() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateLessonInput) => window.api.lessons.create(input),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: lessonsQueryKey })
+    // Ghi thang vao cache thay vi invalidate+refetch, tranh rebuild cay giua
+    // luc react-arborist tu dong vao che do doi ten sau khi tao moi.
+    onSuccess: (lesson) => {
+      qc.setQueryData<LessonSummary[]>(lessonsQueryKey, (old) => [
+        ...(old ?? []),
+        toSummary(lesson)
+      ])
       qc.invalidateQueries({ queryKey: recentLessonsQueryKey })
     }
   })
@@ -40,8 +54,10 @@ export function useUpdateLesson() {
   return useMutation({
     mutationFn: (input: UpdateLessonInput) => window.api.lessons.update(input),
     onSuccess: (lesson) => {
-      qc.invalidateQueries({ queryKey: lessonsQueryKey })
-      qc.invalidateQueries({ queryKey: lessonQueryKey(lesson.id) })
+      qc.setQueryData<LessonSummary[]>(lessonsQueryKey, (old) =>
+        (old ?? []).map((l) => (l.id === lesson.id ? toSummary(lesson) : l))
+      )
+      qc.setQueryData(lessonQueryKey(lesson.id), lesson)
       qc.invalidateQueries({ queryKey: recentLessonsQueryKey })
     }
   })
