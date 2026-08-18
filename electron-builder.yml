@@ -1,0 +1,17 @@
+appId: com.hocyapp.thachmay
+productName: Thach may hoc Y gioi hon tao
+npmRebuild: false
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - '**/*.node'
+win:
+  icon: resources/icon.ico
+  target:
+    - target: dir
+      arch:
+        - x64
