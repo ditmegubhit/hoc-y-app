@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { copyFile, mkdir, stat } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, stat, unlink } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 
 export function attachmentsDir(): string {
@@ -9,6 +9,12 @@ export function attachmentsDir(): string {
 
 export function examFilesDir(): string {
   return join(app.getPath('userData'), 'examFiles')
+}
+
+// Ban sao tam co ve khung to mau (PDF/anh) khi mo file goc - khong phai file
+// nguoi dung tao, khong hien trong UI attachments, chi dung de xem tam.
+export function highlightTempDir(): string {
+  return join(app.getPath('userData'), 'highlightTemp')
 }
 
 async function storeFileIn(
@@ -35,4 +41,32 @@ export function storeExamFile(
   sourcePath: string
 ): Promise<{ storedPath: string; fileName: string; fileSizeBytes: number }> {
   return storeFileIn(examFilesDir(), sourcePath)
+}
+
+const HIGHLIGHT_TEMP_MAX_AGE_MS = 24 * 60 * 60 * 1000
+
+// Goi luc app khoi dong - file tam to mau khong tu xoa ngay sau khi mo (khong
+// co tin hieu dang tin cay "user da dong trinh doc") nen don dep dinh ky thay
+// vi theo doi real-time.
+export async function cleanupHighlightTempDir(): Promise<void> {
+  const dir = highlightTempDir()
+  let entries: string[]
+  try {
+    entries = await readdir(dir)
+  } catch {
+    return
+  }
+
+  const now = Date.now()
+  for (const name of entries) {
+    const filePath = join(dir, name)
+    try {
+      const stats = await stat(filePath)
+      if (now - stats.mtimeMs > HIGHLIGHT_TEMP_MAX_AGE_MS) {
+        await unlink(filePath)
+      }
+    } catch (err) {
+      console.error('[fileStorage] cleanup highlightTemp failed for', filePath, err)
+    }
+  }
 }

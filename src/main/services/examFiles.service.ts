@@ -38,7 +38,8 @@ export async function pickAndAddExamFile(): Promise<ExamFile | null> {
 
 async function extractAndSave(id: string, storedPath: string, type: ExamFileType): Promise<void> {
   try {
-    const text = await extractText(storedPath, type)
+    const chunks = await extractText(storedPath, type)
+    const text = chunks.map((c) => c.text).join('\n\n')
     examFilesRepo.updateExtraction(id, 'done', text)
   } catch (err) {
     console.error('[examFiles] extraction failed:', err)

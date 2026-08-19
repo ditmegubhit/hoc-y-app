@@ -1,11 +1,16 @@
 import { dialog, BrowserWindow } from 'electron'
 import { extname } from 'node:path'
 import { storeAttachmentFile } from './fileStorage.service'
-import { detectExtractableType, extractText } from './textExtraction'
+import { detectExtractableType, extractText, type ExtractableFileType } from './textExtraction'
 import * as attachmentsRepo from '../db/repositories/attachments.repo'
 import * as lessonsRepo from '../db/repositories/lessons.repo'
 import * as searchIndexRepo from '../db/repositories/searchIndex.repo'
+import * as wordPositionsRepo from '../db/repositories/wordPositions.repo'
 import type { Attachment, AttachmentFileType } from '../../shared/types/attachment'
+
+// Van co the co text OCR ra 1-2 ky tu rac (nhieu/mo) - khong tinh la "co noi
+// dung" de tranh gay hieu lam da lap chi muc tim kiem duoc.
+const MIN_USEFUL_TEXT_CHARS = 3
 
 const SUPPORTED_EXTENSIONS: Record<string, AttachmentFileType> = {
   '.pdf': 'pdf',
@@ -63,22 +68,33 @@ export async function addAttachmentFromPath(
 async function extractAndIndex(
   attachmentId: string,
   storedPath: string,
-  type: 'pdf' | 'docx' | 'pptx',
+  type: ExtractableFileType,
   lessonId: string
 ): Promise<void> {
   try {
-    const text = await extractText(storedPath, type)
-    attachmentsRepo.updateAttachmentExtraction(attachmentId, 'done', text)
+    const chunks = await extractText(storedPath, type, () => {
+      attachmentsRepo.markAttachmentOcrProcessing(attachmentId)
+      notifyExtractionUpdated(attachmentId)
+    })
+    const text = chunks.map((c) => c.text).join('\n\n')
+    const status = text.trim().length >= MIN_USEFUL_TEXT_CHARS ? 'done' : 'done_empty'
+    attachmentsRepo.updateAttachmentExtraction(attachmentId, status, text)
+
+    wordPositionsRepo.replaceWordPositions({
+      sourceType: 'attachment',
+      sourceId: attachmentId,
+      chunks
+    })
 
     const lesson = lessonsRepo.getLesson(lessonId)
     if (lesson) {
-      searchIndexRepo.upsertSearchIndex({
+      searchIndexRepo.replaceSearchIndexEntries({
         sourceType: 'attachment',
         sourceId: attachmentId,
         lessonId: lesson.id,
         topicId: lesson.topicId,
         title: lesson.title,
-        content: text
+        chunks
       })
     }
   } catch (err) {
@@ -86,6 +102,18 @@ async function extractAndIndex(
     attachmentsRepo.updateAttachmentExtraction(attachmentId, 'failed', null)
   } finally {
     notifyExtractionUpdated(attachmentId)
+  }
+}
+
+// Chay khi app khoi dong: file cu bi ket o 'done_empty' (bug gan nham 'done'
+// truoc khi co OCR) hoac do dang do app tat dot ngot duoc tu dong xu ly lai
+// bang pipeline OCR moi, khong can user thao tac gi.
+export function requeueStuckExtractions(): void {
+  const stuck = attachmentsRepo.listAttachmentsNeedingReextraction()
+  for (const att of stuck) {
+    const type = detectExtractableType(att.storedPath)
+    if (!type) continue
+    void extractAndIndex(att.id, att.storedPath, type, att.lessonId)
   }
 }
 

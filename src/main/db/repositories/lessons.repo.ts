@@ -94,18 +94,14 @@ export function updateLesson(input: UpdateLessonInput): Lesson {
   ).run(title, notesJson, notesText, topicId, sortOrder, input.id)
 
   const updated = getLesson(input.id) as Lesson
-  if (updated.notesText && updated.notesText.trim()) {
-    searchIndexRepo.upsertSearchIndex({
-      sourceType: 'lesson_note',
-      sourceId: updated.id,
-      lessonId: updated.id,
-      topicId: updated.topicId,
-      title: updated.title,
-      content: updated.notesText
-    })
-  } else {
-    searchIndexRepo.deleteSearchIndex('lesson_note', updated.id)
-  }
+  searchIndexRepo.replaceSearchIndexEntries({
+    sourceType: 'lesson_note',
+    sourceId: updated.id,
+    lessonId: updated.id,
+    topicId: updated.topicId,
+    title: updated.title,
+    chunks: [{ unitType: 'note', unitIndex: 1, text: updated.notesText ?? '' }]
+  })
   return updated
 }
 

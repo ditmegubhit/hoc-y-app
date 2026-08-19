@@ -7,7 +7,7 @@ import type {
   UpdateLessonInput
 } from './lesson'
 import type { Attachment } from './attachment'
-import type { SearchResultGroup } from './search'
+import type { SearchResultGroup, HighlightedChunkQuery, HighlightedChunk } from './search'
 import type { DraftQuestion, Question } from './question'
 import type { ClaudeCliStatus, GenerateQuizFromLessonResult } from './claudeCli'
 import type { ExamFile } from './examFile'
@@ -34,9 +34,21 @@ export interface AppApi {
     remove: (id: string) => Promise<void>
     reextract: (id: string) => Promise<void>
     onExtractionUpdated: (callback: (attachmentId: string) => void) => () => void
+    getPageImage: (input: {
+      attachmentId: string
+      unitType: string
+      unitIndex: number
+    }) => Promise<{ mimeType: string; base64: string } | null>
+    openAtLocation: (input: {
+      attachmentId: string
+      unitType: string
+      unitIndex: number
+      matchedText: string
+    }) => Promise<{ success: boolean; message?: string }>
   }
   search: {
     query: (keyword: string) => Promise<SearchResultGroup[]>
+    getHighlightedChunk: (query: HighlightedChunkQuery) => Promise<HighlightedChunk | null>
   }
   ai: {
     checkAvailability: () => Promise<ClaudeCliStatus>

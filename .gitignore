@@ -11,3 +11,8 @@ Thumbs.db
 # App runtime data (chỉ dùng khi dev chạy trực tiếp trong repo, bản thực tế nằm ở userData)
 *.sqlite3
 *.sqlite3-*
+
+# Ban sao thua o root (file that dung nam o resources/tessdata/, day duoc tai
+# nham vao root luc setup Tesseract, khong duoc code nao tham chieu toi)
+/eng.traineddata
+/vie.traineddata

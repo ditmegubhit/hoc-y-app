@@ -1,5 +1,11 @@
 export type AttachmentFileType = 'pdf' | 'docx' | 'pptx' | 'png' | 'jpg' | 'jpeg' | 'other'
-export type ExtractionStatus = 'pending' | 'done' | 'failed' | 'not_supported'
+export type ExtractionStatus =
+  | 'pending'
+  | 'ocr_processing'
+  | 'done'
+  | 'done_empty'
+  | 'failed'
+  | 'not_supported'
 
 export interface Attachment {
   id: string

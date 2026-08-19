@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { getDb } from '../index'
 import * as searchIndexRepo from './searchIndex.repo'
+import * as wordPositionsRepo from './wordPositions.repo'
 import type {
   Attachment,
   AttachmentFileType,
@@ -82,10 +83,32 @@ export function updateAttachmentExtraction(
     .run(status, text, id)
 }
 
+export function markAttachmentOcrProcessing(id: string): void {
+  getDb().prepare('UPDATE attachments SET extraction_status = ? WHERE id = ?').run(
+    'ocr_processing' satisfies ExtractionStatus,
+    id
+  )
+}
+
+// File bi ket o 'done_empty' (da xu ly xong nhung khong ra text - vd bug cu
+// truoc khi co OCR), hoac dang do dang ('pending'/'ocr_processing') do app bi
+// tat dot ngot giua chung (extraction chay fire-and-forget, khong dam bao
+// hoan tat truoc khi quit) - can requeue lai khi app khoi dong.
+export function listAttachmentsNeedingReextraction(): Attachment[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT * FROM attachments
+       WHERE extraction_status IN ('done_empty', 'pending', 'ocr_processing')`
+    )
+    .all() as AttachmentRow[]
+  return rows.map(mapAttachment)
+}
+
 export function deleteAttachment(id: string): void {
   const db = getDb()
   const deleteTx = db.transaction(() => {
     searchIndexRepo.deleteSearchIndex('attachment', id)
+    wordPositionsRepo.deleteWordPositions('attachment', id)
     db.prepare('DELETE FROM attachments WHERE id = ?').run(id)
   })
   deleteTx()

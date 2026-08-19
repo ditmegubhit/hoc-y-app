@@ -13,9 +13,11 @@ import type { LessonWidgetProps } from '../widgetRegistry'
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Đang trích xuất...',
+  ocr_processing: 'Đang nhận diện chữ (OCR)...',
   done: 'Đã lập chỉ mục tìm kiếm',
+  done_empty: 'Không tìm thấy nội dung chữ (không thể tìm kiếm)',
   failed: 'Trích xuất lỗi',
-  not_supported: 'Không hỗ trợ trích xuất nội dung (ảnh)'
+  not_supported: 'Không hỗ trợ trích xuất nội dung'
 }
 
 function formatSize(bytes: number): string {
@@ -67,7 +69,7 @@ function AttachmentsWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
             <span className={`attachment-status attachment-status-${att.extractionStatus}`}>
               {STATUS_LABEL[att.extractionStatus] ?? att.extractionStatus}
             </span>
-            {att.extractionStatus === 'failed' && (
+            {(att.extractionStatus === 'failed' || att.extractionStatus === 'done_empty') && (
               <button
                 type="button"
                 title="Thử lại"

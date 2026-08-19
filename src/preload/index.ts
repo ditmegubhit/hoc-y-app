@@ -31,10 +31,14 @@ const api: AppApi = {
       ): void => callback(payload.attachmentId)
       ipcRenderer.on(IpcChannels.attachments.extractionUpdated, listener)
       return () => ipcRenderer.removeListener(IpcChannels.attachments.extractionUpdated, listener)
-    }
+    },
+    getPageImage: (input) => ipcRenderer.invoke(IpcChannels.attachments.getPageImage, input),
+    openAtLocation: (input) => ipcRenderer.invoke(IpcChannels.attachments.openAtLocation, input)
   },
   search: {
-    query: (keyword) => ipcRenderer.invoke(IpcChannels.search.query, { keyword })
+    query: (keyword) => ipcRenderer.invoke(IpcChannels.search.query, { keyword }),
+    getHighlightedChunk: (query) =>
+      ipcRenderer.invoke(IpcChannels.search.getHighlightedChunk, query)
   },
   ai: {
     checkAvailability: () => ipcRenderer.invoke(IpcChannels.ai.checkAvailability),

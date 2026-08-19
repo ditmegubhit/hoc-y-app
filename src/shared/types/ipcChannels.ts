@@ -18,10 +18,13 @@ export const IpcChannels = {
     add: 'attachments:add',
     remove: 'attachments:remove',
     reextract: 'attachments:reextract',
-    extractionUpdated: 'attachments:extractionUpdated'
+    extractionUpdated: 'attachments:extractionUpdated',
+    getPageImage: 'attachments:getPageImage',
+    openAtLocation: 'attachments:openAtLocation'
   },
   search: {
-    query: 'search:query'
+    query: 'search:query',
+    getHighlightedChunk: 'search:getHighlightedChunk'
   },
   ai: {
     checkAvailability: 'ai:checkAvailability',
