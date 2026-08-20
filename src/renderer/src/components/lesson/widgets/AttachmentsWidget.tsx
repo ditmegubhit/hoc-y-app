@@ -10,6 +10,7 @@ import {
 } from '@renderer/queries/attachments'
 import ConfirmDialog from '@renderer/components/common/ConfirmDialog'
 import type { LessonWidgetProps } from '../widgetRegistry'
+import type { Attachment } from '@shared/types/attachment'
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Đang trích xuất...',
@@ -26,7 +27,16 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function AttachmentsWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
+interface AttachmentsWidgetProps extends LessonWidgetProps {
+  activeAttachmentId: string | null
+  onOpenAttachment: (attachment: Attachment) => void
+}
+
+function AttachmentsWidget({
+  lesson,
+  activeAttachmentId,
+  onOpenAttachment
+}: AttachmentsWidgetProps): React.JSX.Element {
   const qc = useQueryClient()
   const attachmentsQuery = useAttachments(lesson.id)
   const addAttachment = useAddAttachment(lesson.id)
@@ -63,7 +73,11 @@ function AttachmentsWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
 
       <ul className="attachment-list">
         {attachmentsQuery.data?.map((att) => (
-          <li key={att.id} className="attachment-item">
+          <li
+            key={att.id}
+            className={`attachment-item${att.id === activeAttachmentId ? ' attachment-item-active' : ''}`}
+            onClick={() => onOpenAttachment(att)}
+          >
             <span className="attachment-name">{att.fileName}</span>
             <span className="attachment-size">{formatSize(att.fileSizeBytes)}</span>
             <span className={`attachment-status attachment-status-${att.extractionStatus}`}>
@@ -73,7 +87,10 @@ function AttachmentsWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
               <button
                 type="button"
                 title="Thử lại"
-                onClick={() => reextractAttachment.mutate(att.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  reextractAttachment.mutate(att.id)
+                }}
               >
                 <RotateCcw size={13} />
               </button>
@@ -81,7 +98,10 @@ function AttachmentsWidget({ lesson }: LessonWidgetProps): React.JSX.Element {
             <button
               type="button"
               title="Xoá"
-              onClick={() => setPendingDelete({ id: att.id, fileName: att.fileName })}
+              onClick={(e) => {
+                e.stopPropagation()
+                setPendingDelete({ id: att.id, fileName: att.fileName })
+              }}
             >
               <X size={13} />
             </button>

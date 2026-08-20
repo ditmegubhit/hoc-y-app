@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { z } from 'zod'
 import { IpcChannels } from '../../../shared/types/ipcChannels'
 import * as attachmentsService from '../../services/attachments.service'
-import { getPageImage } from '../../services/attachmentView.service'
+import { getPageImage, getPageCount } from '../../services/attachmentView.service'
 import { openAtLocation } from '../../services/attachmentOpen.service'
 
 const idSchema = z.object({ id: z.string() })
@@ -12,6 +12,7 @@ const pageImageSchema = z.object({
   unitType: z.string(),
   unitIndex: z.number()
 })
+const attachmentIdSchema = z.object({ attachmentId: z.string() })
 const openAtLocationSchema = z.object({
   attachmentId: z.string(),
   unitType: z.string(),
@@ -43,6 +44,11 @@ export function registerAttachmentsHandlers(): void {
   ipcMain.handle(IpcChannels.attachments.getPageImage, (_event, payload) => {
     const { attachmentId, unitType, unitIndex } = pageImageSchema.parse(payload)
     return getPageImage(attachmentId, unitType, unitIndex)
+  })
+
+  ipcMain.handle(IpcChannels.attachments.getPageCount, (_event, payload) => {
+    const { attachmentId } = attachmentIdSchema.parse(payload)
+    return getPageCount(attachmentId)
   })
 
   ipcMain.handle(IpcChannels.attachments.openAtLocation, (_event, payload) => {

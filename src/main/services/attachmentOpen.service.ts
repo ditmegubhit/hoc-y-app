@@ -1,13 +1,14 @@
 import { spawn } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { existsSync } from 'node:fs'
-import { app, shell } from 'electron'
+import { shell } from 'electron'
 import { join } from 'node:path'
 import * as attachmentsRepo from '../db/repositories/attachments.repo'
 import * as wordPositionsRepo from '../db/repositories/wordPositions.repo'
 import { findWordRunForText, unionRectsByLine } from './highlight/wordMatch'
 import { createHighlightedPdfCopy } from './highlight/pdfHighlight.service'
 import { createHighlightedImageCopy } from './highlight/imageHighlight.service'
+import { scriptsDir } from './scriptsPath'
 
 // PDF: da thu ep nhay trang qua app mac dinh cua he thong (WPS: khong hieu
 // tham so; Foxit: chan boi hop thoai xac nhan roi van bo qua tham so, ke ca
@@ -58,15 +59,6 @@ function spawnBrowserNewWindow(browserPath: string, targetUrl: string): Promise<
       resolve({ success: true })
     })
   })
-}
-
-// electron-vite bundle toan bo src/main/**/*.ts vao 1 file out/main/index.js,
-// nen __dirname trong moi module main deu tro ve out/main/ (giong pattern
-// ocr/resourcePaths.ts).
-function scriptsDir(): string {
-  return app.isPackaged
-    ? join(process.resourcesPath, 'scripts')
-    : join(__dirname, '../../resources/scripts')
 }
 
 function openOfficeAtLocation(

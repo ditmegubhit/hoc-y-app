@@ -39,6 +39,7 @@ export interface AppApi {
       unitType: string
       unitIndex: number
     }) => Promise<{ mimeType: string; base64: string } | null>
+    getPageCount: (input: { attachmentId: string }) => Promise<number | null>
     openAtLocation: (input: {
       attachmentId: string
       unitType: string

@@ -47,3 +47,18 @@ export async function renderPdfPageAsPng(
     await loadingTask.destroy()
   }
 }
+
+// Chi doc so trang, khong render - dung de renderer biet truoc tong so trang
+// truoc khi cuon lazy-load tung anh trang qua renderPdfPageAsPng.
+export async function getPdfPageCount(filePath: string): Promise<number> {
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const data = new Uint8Array(await readFile(filePath))
+
+  const loadingTask = pdfjsLib.getDocument({ data })
+  const doc = await loadingTask.promise
+  try {
+    return doc.numPages
+  } finally {
+    await loadingTask.destroy()
+  }
+}

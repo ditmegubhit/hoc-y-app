@@ -20,6 +20,7 @@ export const IpcChannels = {
     reextract: 'attachments:reextract',
     extractionUpdated: 'attachments:extractionUpdated',
     getPageImage: 'attachments:getPageImage',
+    getPageCount: 'attachments:getPageCount',
     openAtLocation: 'attachments:openAtLocation'
   },
   search: {

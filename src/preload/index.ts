@@ -33,6 +33,7 @@ const api: AppApi = {
       return () => ipcRenderer.removeListener(IpcChannels.attachments.extractionUpdated, listener)
     },
     getPageImage: (input) => ipcRenderer.invoke(IpcChannels.attachments.getPageImage, input),
+    getPageCount: (input) => ipcRenderer.invoke(IpcChannels.attachments.getPageCount, input),
     openAtLocation: (input) => ipcRenderer.invoke(IpcChannels.attachments.openAtLocation, input)
   },
   search: {

@@ -8,14 +8,32 @@ import HomePage from './pages/HomePage'
 import SettingsPage from './pages/SettingsPage'
 import ExamBankPage from './pages/ExamBankPage'
 import SearchBar from './components/search/SearchBar'
+import ResizeHandle from './components/common/ResizeHandle'
 
 type View = 'home' | 'lesson' | 'topic' | 'settings' | 'examBank'
+
+const SIDEBAR_WIDTH_STORAGE_KEY = 'appSidebarWidth'
+const DEFAULT_SIDEBAR_WIDTH = 320
+const MIN_SIDEBAR_WIDTH = 240
+const MAX_SIDEBAR_WIDTH = 600
+
+function readStoredSidebarWidth(): number {
+  const raw = window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
+  const parsed = raw ? Number(raw) : NaN
+  return Number.isFinite(parsed) ? parsed : DEFAULT_SIDEBAR_WIDTH
+}
 
 function App(): React.JSX.Element {
   const [view, setView] = useState<View>('home')
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null)
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
   const [searchKeyword, setSearchKeyword] = useState('')
+  const [sidebarWidth, setSidebarWidth] = useState(readStoredSidebarWidth)
+
+  const handleSidebarWidthChange = (width: number): void => {
+    setSidebarWidth(width)
+    window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(width))
+  }
 
   const handleSelectLesson = (id: string): void => {
     setSelectedLessonId(id)
@@ -36,7 +54,17 @@ function App(): React.JSX.Element {
 
   return (
     <div className="app-layout">
-      <aside className="app-sidebar">
+      <aside className="app-sidebar" style={{ width: sidebarWidth }}>
+        <ResizeHandle
+          className="app-sidebar-resize-handle"
+          value={sidebarWidth}
+          onChange={handleSidebarWidthChange}
+          computeNext={(startWidth, dx) =>
+            // Sidebar nam ben trai, keo tay cam sang phai (delta duong) lam
+            // rong ra - cong dx truc tiep (nguoc dau voi panel file ben phai).
+            Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, startWidth + dx))
+          }
+        />
         <div className="app-sidebar-header">
           <button type="button" className="app-logo" onClick={goHome}>
             <GraduationCap size={20} />
