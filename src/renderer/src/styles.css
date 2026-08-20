@@ -133,7 +133,7 @@ input[type='number']:focus {
 .app-sidebar {
   position: relative;
   flex: 0 0 auto;
-  min-width: 240px;
+  min-width: 0;
   border-right: 1px solid var(--border);
   background: var(--bg-sidebar);
   display: flex;
@@ -158,9 +158,45 @@ input[type='number']:focus {
 
 .app-main {
   flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem 2rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background: var(--bg-main);
+}
+
+/* Thanh tim kiem tach rieng KHOI vung cuon noi dung (xem .app-main-content)
+   - la 1 hang co dinh, khong con chiem cho trong luong cuon chung, de cua
+   so file dinh kem (dang xem bai hoc) co toi da chieu cao con lai. */
+.app-search-row {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0.9rem 2rem 0;
+}
+
+/* Dropdown ket qua tim kiem NOI DE LEN TREN noi dung dang xem (bai hoc +
+   cua so file dinh kem neu co) - khong thay the/mat giao dien dang xem. */
+.app-search-overlay {
+  position: absolute;
+  left: 2rem;
+  right: 2rem;
+  top: 100%;
+  z-index: 30;
+  margin-top: 0.4rem;
+  max-height: min(65vh, 560px);
+  overflow-y: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 0.75rem 1rem;
+}
+
+.app-main-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.9rem 2rem 1.5rem;
 }
 
 .app-sidebar-header {
@@ -613,6 +649,20 @@ input[type='number']:focus {
   box-shadow: var(--shadow-sm);
 }
 
+/* Dang xem 1 bai hoc - thu gon chieu cao thanh tim kiem toi da, nhuong
+   khong gian doc cho cua so file dinh kem (xem App.tsx / .app-search-row).
+   Gioi han be rong (khong keo dai het hang) - panel file gio la
+   position:fixed de len tren hang nay (xem .lesson-attachment-panel), can
+   tranh thanh tim kiem vuon qua vung do. */
+.search-bar.is-compact {
+  margin-bottom: 0.6rem;
+  max-width: 420px;
+}
+
+.search-bar.is-compact input {
+  padding: 0.35rem 0;
+}
+
 .search-bar-icon {
   color: var(--text-faint);
   flex-shrink: 0;
@@ -778,12 +828,22 @@ input[type='number']:focus {
 
 /* ---------- Attachment viewer panel ---------- */
 
+/* position:fixed - "an het len tren" ca hang thanh tim kiem (khong con bi
+   day xuong duoi no trong luong flex nua), luon dinh dung goc tren man
+   hinh THAT bat ke cuon trang. right = khoang cach toi mep (14px, chua cho
+   thanh cuon doc cua .app-main-content) + be rong .annotation-toolbox
+   (36px) + 1 khoang nho (10px) de 2 thu khong dinh sat nhau. Chi 1 khoang
+   nho o duoi (1rem) de van thay duoc thanh cuon ngang, khong an het 100vh.
+   .lesson-workspace-main tu danh cho khoang trong tuong ung (xem
+   LessonWorkspacePage.tsx, dua theo panelWidth hien tai) de khong bi chinh
+   panel nay de len. */
 .lesson-attachment-panel {
-  flex: 0 0 auto;
-  min-width: 320px;
-  position: sticky;
+  position: fixed;
   top: 0;
-  height: calc(100vh - 3rem);
+  right: 60px;
+  min-width: 320px;
+  height: calc(100vh - 1rem);
+  z-index: 15;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border);
@@ -848,11 +908,47 @@ input[type='number']:focus {
 .lesson-attachment-panel-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
   min-height: 0;
-  /* Cho phep cuon doc bang 1 ngon (native) nhung tat pinch-zoom he thong -
-     de JS tu xu ly cu chi 2 ngon (xem AttachmentViewerPanel.tsx), tranh
-     tranh chap voi zoom toan trang cua Chromium. */
-  touch-action: pan-y;
+  /* Tat toan bo cu-chi cham mac dinh cua he thong (cuon lan pinch-zoom) -
+     JS tu xu ly ca keo-di-chuyen tu do 1 ngon lan pinch-zoom 2 ngon (xem
+     AttachmentViewerPanel.tsx), tranh tranh chap/giat voi Chromium. */
+  touch-action: none;
+}
+
+/* Thanh cuon LUON hien ro (khong cho phep kieu overlay tu an cua he thong)
+   - dac biet quan trong cho thanh NGANG khi zoom cao, vi neu khong thay
+   thanh cuon nguoi dung se khong biet co the keo/cuon sang phai duoc va
+   phai do doan bang cach keo tu do (kho hon nhieu so voi cuon doc bang
+   con lan chuot). Ap dung rieng scrollbar cua panel, khong dung
+   scrollbar-width:none/an di o dau khac. */
+.lesson-attachment-panel-body::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.lesson-attachment-panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lesson-attachment-panel-body::-webkit-scrollbar-thumb {
+  /* var(--border) qua nhat (mau vien mong, khong phai mau danh cho thanh
+     cuon) - gan nhu vo hinh tren nen sang, la ly do chinh khien khong thay
+     duoc thanh cuon ngang. Dung mau co do tuong phan ro rang, khong phu
+     thuoc theme. */
+  background: color-mix(in srgb, var(--text-faint) 70%, transparent);
+  border-radius: 6px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.lesson-attachment-panel-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+  background-clip: padding-box;
+}
+
+.lesson-attachment-panel-body::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .viewer-unsupported {
@@ -871,13 +967,28 @@ input[type='number']:focus {
 .pdf-viewer-scroll {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* "safe center": can giua binh thuong khi noi dung vua khung, nhung neu
+     noi dung RONG hon khung (zoom cao) thi tu dong rot ve can trai thay vi
+     can giua - can giua thuong ma noi dung tran ra ca 2 ben se khien trinh
+     duyet chi tinh vung cuon duoc o phia PHAI, phia TRAI bi "am" (scrollLeft
+     khong the am) nen khong bao gio cuon toi duoc, dung y "chi cuon sang
+     phai het le duoc, khong cuon sang trai het le duoc" ma user gap phai. */
+  align-items: safe center;
   gap: 0.6rem;
   padding: 0.6rem;
-  overflow-x: auto;
+  /* Mac dinh 1 block box binh thuong se rong DUNG BANG cha (100%) bat ke
+     con ben trong co rong hon hay khong - overflow cua con chi "tran ra
+     ngoai" ve mat hinh anh chu KHONG lam to chinh box nay len, khien viec
+     .lesson-attachment-panel-body (cha) co nhan dung scrollWidth hay
+     khong phu thuoc vao lan truyen overflow ngam, de sai lech. Ep box nay
+     TU RONG THEO NOI DUNG (fit-content, toi thieu 100% cha) de scrollWidth
+     luon dung ro rang, dam bao thanh cuon ngang xuat hien khi zoom cao. */
+  width: fit-content;
+  min-width: 100%;
 }
 
 .pdf-viewer-page {
+  position: relative;
   flex: 0 0 auto;
   width: 760px;
   min-height: 200px;
@@ -1200,4 +1311,264 @@ input[type='number']:focus {
   display: flex;
   gap: 0.4rem;
   flex-shrink: 0;
+}
+
+/* ---------- Annotation toolbox (chu thich file dinh kem) ---------- */
+
+/* position:fixed (khong con sticky trong luong .app-main-content) - de an
+   het len tren ca hang thanh tim kiem, luon dinh dung goc tren-phai man
+   hinh THAT, khong phu thuoc sidebar/thanh tim kiem/cuon trang. Xem
+   .lesson-attachment-panel ben duoi - 2 thu nay luon di doi voi nhau.
+   right: 14px (khong phai 0) - chua lai dung khoang cho thanh cuon doc
+   cua .app-main-content (rong 12px, xem .lesson-attachment-panel-body::
+   -webkit-scrollbar) khoi bi toolbox de len mat. */
+.annotation-toolbox {
+  position: fixed;
+  top: 0;
+  right: 14px;
+  width: 36px;
+  height: calc(100vh - 1rem);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.annotation-toolbox-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.annotation-toolbox button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+.annotation-toolbox button.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.annotation-toolbox button.is-dirty {
+  border-color: var(--warning-text, #d97706);
+  color: var(--warning-text, #d97706);
+}
+
+.annotation-color-picker {
+  position: relative;
+}
+
+.annotation-color-picker-button {
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.annotation-color-picker-bar {
+  display: block;
+  width: 18px;
+  height: 3px;
+  border-radius: 1px;
+  border: 1px solid transparent;
+}
+
+.annotation-color-picker-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.annotation-color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.annotation-color-swatch.is-selected {
+  border-color: var(--text);
+}
+
+/* Dung chung cho ca nut tron (bang chon mau) lan thanh mau tren nut chinh -
+   mau "trang" can vien de khong lan vao nen sang, mau "khong co mau" ve
+   1 vach cheo qua o trong suot (quy uoc pho bien cho "no fill").
+   Phai gan them tien to ".annotation-toolbox" de tang do dac hieu, vuot qua
+   quy tac chung ".annotation-toolbox button { background: var(--card-bg) }"
+   - neu khong quy tac do se de len, khien moi mau deu hien mau nen mac
+   dinh (khong hien mau gi ca). */
+.annotation-toolbox .annotation-color-fill-red {
+  background: #ff6b6b;
+}
+
+.annotation-toolbox .annotation-color-fill-yellow {
+  background: #ffd43b;
+}
+
+.annotation-toolbox .annotation-color-fill-blue {
+  background: #4dabf7;
+}
+
+.annotation-toolbox .annotation-color-fill-white {
+  background: #ffffff;
+  border-color: var(--border);
+}
+
+.annotation-toolbox .annotation-color-fill-none {
+  background:
+    linear-gradient(
+      to top right,
+      transparent calc(50% - 1px),
+      #e03131 calc(50% - 1px),
+      #e03131 calc(50% + 1px),
+      transparent calc(50% + 1px)
+    ),
+    var(--card-bg);
+  border-color: var(--border);
+}
+
+.annotation-toolbox input[type='range'] {
+  width: 28px;
+}
+
+/* ---------- Annotation layer (overlay ve tren tung trang) ---------- */
+
+.annotation-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.annotation-layer-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.annotation-note-draft-rect {
+  fill: rgba(0, 0, 0, 0.06);
+  stroke: var(--text-muted);
+  stroke-dasharray: 4 3;
+  stroke-width: 1.5;
+}
+
+.annotation-eraser-cursor {
+  fill: rgba(255, 255, 255, 0.15);
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+  pointer-events: none;
+}
+
+/* Ket hop Text Box (Word) + Typewriter (Foxit): nen trong suot, khong vien
+   khi khong sua (chu nam de len tren tai lieu nhu go truc tiep vao trang) -
+   chi hien khung mo (dashed) LUC DANG SUA de nguoi dung biet ranh gioi hop. */
+.annotation-note-box {
+  position: absolute;
+  pointer-events: auto;
+  background: transparent;
+  border: 1px dashed transparent;
+  border-radius: 2px;
+  overflow: visible;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: grab;
+}
+
+.annotation-note-box.is-editing {
+  border-color: var(--accent);
+  cursor: text;
+}
+
+.annotation-note-box.is-selected {
+  border-style: dashed;
+}
+
+.annotation-note-box p {
+  margin: 0;
+  padding: 2px;
+  height: 100%;
+  white-space: pre-wrap;
+  overflow: hidden;
+}
+
+.annotation-note-box textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  resize: none;
+  padding: 2px;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.annotation-note-box textarea:focus {
+  outline: none;
+}
+
+/* Chi render khi hop dang duoc CHON (xem AnnotationLayer.tsx) - 4 goc, moi
+   goc 1 tay cam vuong o dung vi tri, giong khung bao cua highlight/but chi. */
+.annotation-note-resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #ffffff;
+  border: 1.5px solid #1971c2;
+  pointer-events: auto;
+}
+
+.annotation-note-resize-handle-nw {
+  left: -5px;
+  top: -5px;
+  cursor: nwse-resize;
+}
+
+.annotation-note-resize-handle-ne {
+  right: -5px;
+  top: -5px;
+  cursor: nesw-resize;
+}
+
+.annotation-note-resize-handle-sw {
+  left: -5px;
+  bottom: -5px;
+  cursor: nesw-resize;
+}
+
+.annotation-note-resize-handle-se {
+  right: -5px;
+  bottom: -5px;
+  cursor: nwse-resize;
 }

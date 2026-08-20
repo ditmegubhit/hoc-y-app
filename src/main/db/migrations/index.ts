@@ -6,6 +6,7 @@ import * as m005 from './005_ocr_extraction_status'
 import * as m006 from './006_search_index_units'
 import * as m007 from './007_word_positions'
 import * as m008 from './008_docx_page_split'
+import * as m009 from './009_attachment_annotations'
 
 export interface Migration {
   id: string
@@ -14,4 +15,4 @@ export interface Migration {
 
 // Them migration moi cho tung milestone bang cach import va push vao day,
 // giu nguyen thu tu, khong sua lai migration cu da chay.
-export const migrations: Migration[] = [m001, m002, m003, m004, m005, m006, m007, m008]
+export const migrations: Migration[] = [m001, m002, m003, m004, m005, m006, m007, m008, m009]

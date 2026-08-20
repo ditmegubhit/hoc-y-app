@@ -7,6 +7,7 @@ import type {
   UpdateLessonInput
 } from './lesson'
 import type { Attachment } from './attachment'
+import type { Annotation, NewAnnotation } from './annotation'
 import type { SearchResultGroup, HighlightedChunkQuery, HighlightedChunk } from './search'
 import type { DraftQuestion, Question } from './question'
 import type { ClaudeCliStatus, GenerateQuizFromLessonResult } from './claudeCli'
@@ -46,6 +47,11 @@ export interface AppApi {
       unitIndex: number
       matchedText: string
     }) => Promise<{ success: boolean; message?: string }>
+    getAnnotations: (input: { attachmentId: string }) => Promise<Annotation[]>
+    saveAnnotations: (input: {
+      attachmentId: string
+      annotations: NewAnnotation[]
+    }) => Promise<void>
   }
   search: {
     query: (keyword: string) => Promise<SearchResultGroup[]>

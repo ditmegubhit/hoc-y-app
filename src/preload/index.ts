@@ -34,7 +34,9 @@ const api: AppApi = {
     },
     getPageImage: (input) => ipcRenderer.invoke(IpcChannels.attachments.getPageImage, input),
     getPageCount: (input) => ipcRenderer.invoke(IpcChannels.attachments.getPageCount, input),
-    openAtLocation: (input) => ipcRenderer.invoke(IpcChannels.attachments.openAtLocation, input)
+    openAtLocation: (input) => ipcRenderer.invoke(IpcChannels.attachments.openAtLocation, input),
+    getAnnotations: (input) => ipcRenderer.invoke(IpcChannels.attachments.getAnnotations, input),
+    saveAnnotations: (input) => ipcRenderer.invoke(IpcChannels.attachments.saveAnnotations, input)
   },
   search: {
     query: (keyword) => ipcRenderer.invoke(IpcChannels.search.query, { keyword }),

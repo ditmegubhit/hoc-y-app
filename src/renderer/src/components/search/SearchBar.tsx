@@ -3,11 +3,14 @@ import { Search, X } from 'lucide-react'
 interface SearchBarProps {
   value: string
   onChange: (value: string) => void
+  // Thu gon chieu cao (dung khi dang xem 1 bai hoc, de nhuong khong gian
+  // doc cho cua so file dinh kem o ben duoi) - xem App.tsx.
+  compact?: boolean
 }
 
-function SearchBar({ value, onChange }: SearchBarProps): React.JSX.Element {
+function SearchBar({ value, onChange, compact }: SearchBarProps): React.JSX.Element {
   return (
-    <div className="search-bar">
+    <div className={`search-bar${compact ? ' is-compact' : ''}`}>
       <Search size={16} className="search-bar-icon" />
       <input
         type="text"

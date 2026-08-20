@@ -14,7 +14,9 @@ type View = 'home' | 'lesson' | 'topic' | 'settings' | 'examBank'
 
 const SIDEBAR_WIDTH_STORAGE_KEY = 'appSidebarWidth'
 const DEFAULT_SIDEBAR_WIDTH = 320
-const MIN_SIDEBAR_WIDTH = 240
+// Cho phep keo hep toi muc chi con thay 1 hang ky tu theo chieu doc (gan
+// nhu thu gon) - theo yeu cau cua user, khong con gioi han 240px nhu truoc.
+const MIN_SIDEBAR_WIDTH = 40
 const MAX_SIDEBAR_WIDTH = 600
 
 function readStoredSidebarWidth(): number {
@@ -102,24 +104,38 @@ function App(): React.JSX.Element {
         />
       </aside>
       <main className="app-main">
-        <SearchBar value={searchKeyword} onChange={setSearchKeyword} />
-        {searchKeyword.trim() ? (
-          <SearchResultsPage keyword={searchKeyword} onSelectLesson={handleSelectLesson} />
-        ) : view === 'lesson' ? (
-          <LessonWorkspacePage lessonId={selectedLessonId} />
-        ) : view === 'topic' && selectedTopicId ? (
-          <TopicWorkspacePage
-            topicId={selectedTopicId}
-            onSelectTopic={handleSelectTopic}
-            onSelectLesson={handleSelectLesson}
-          />
-        ) : view === 'settings' ? (
-          <SettingsPage />
-        ) : view === 'examBank' ? (
-          <ExamBankPage />
-        ) : (
-          <HomePage onSelectLesson={handleSelectLesson} />
-        )}
+        <div className="app-search-row">
+          <SearchBar value={searchKeyword} onChange={setSearchKeyword} compact={view === 'lesson'} />
+          {/* Dang xem 1 bai hoc (co the dang mo ca cua so file dinh kem) -
+              hien ket qua tim kiem dang dropdown NOI DE LEN TREN, khong thay
+              the toan bo noi dung, de khong mat giao dien cua so file dinh
+              kem dang mo. Cac trang khac (home/topic/...) khong co gi "quy"
+              de giu lai nen van thay the toan bo nhu truoc (xem ben duoi). */}
+          {view === 'lesson' && searchKeyword.trim() && (
+            <div className="app-search-overlay">
+              <SearchResultsPage keyword={searchKeyword} onSelectLesson={handleSelectLesson} />
+            </div>
+          )}
+        </div>
+        <div className="app-main-content">
+          {view === 'lesson' ? (
+            <LessonWorkspacePage lessonId={selectedLessonId} />
+          ) : searchKeyword.trim() ? (
+            <SearchResultsPage keyword={searchKeyword} onSelectLesson={handleSelectLesson} />
+          ) : view === 'topic' && selectedTopicId ? (
+            <TopicWorkspacePage
+              topicId={selectedTopicId}
+              onSelectTopic={handleSelectTopic}
+              onSelectLesson={handleSelectLesson}
+            />
+          ) : view === 'settings' ? (
+            <SettingsPage />
+          ) : view === 'examBank' ? (
+            <ExamBankPage />
+          ) : (
+            <HomePage onSelectLesson={handleSelectLesson} />
+          )}
+        </div>
       </main>
     </div>
   )

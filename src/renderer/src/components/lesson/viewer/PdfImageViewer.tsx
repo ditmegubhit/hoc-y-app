@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { usePageCount, usePageImage } from '@renderer/queries/attachmentView'
+import AnnotationLayer from './AnnotationLayer'
 import type { Attachment } from '@shared/types/attachment'
 
 interface PdfImageViewerProps {
@@ -15,11 +16,13 @@ export const BASE_CONTENT_WIDTH = 760
 function PdfPage({
   attachmentId,
   pageNumber,
-  width
+  width,
+  zoom
 }: {
   attachmentId: string
   pageNumber: number
   width: number
+  zoom: number
 }): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
@@ -42,12 +45,15 @@ function PdfPage({
   return (
     <div ref={ref} className="pdf-viewer-page" style={{ width }}>
       {pageImage.data ? (
-        <img
-          className="pdf-viewer-page-img"
-          style={{ width }}
-          src={`data:${pageImage.data.mimeType};base64,${pageImage.data.base64}`}
-          alt={`Trang ${pageNumber}`}
-        />
+        <>
+          <img
+            className="pdf-viewer-page-img"
+            style={{ width }}
+            src={`data:${pageImage.data.mimeType};base64,${pageImage.data.base64}`}
+            alt={`Trang ${pageNumber}`}
+          />
+          <AnnotationLayer pageNumber={pageNumber} zoom={zoom} />
+        </>
       ) : (
         <div className="pdf-viewer-page-placeholder">
           {visible ? 'Đang tải trang...' : `Trang ${pageNumber}`}
@@ -69,12 +75,15 @@ function ImageViewer({ attachment, zoom }: PdfImageViewerProps): React.JSX.Eleme
 
   return (
     <div className="pdf-viewer-scroll">
-      <img
-        className="pdf-viewer-image"
-        style={{ width: BASE_CONTENT_WIDTH * zoom }}
-        src={`data:${pageImage.data.mimeType};base64,${pageImage.data.base64}`}
-        alt={attachment.fileName}
-      />
+      <div className="pdf-viewer-page" style={{ width: BASE_CONTENT_WIDTH * zoom }}>
+        <img
+          className="pdf-viewer-image"
+          style={{ width: BASE_CONTENT_WIDTH * zoom }}
+          src={`data:${pageImage.data.mimeType};base64,${pageImage.data.base64}`}
+          alt={attachment.fileName}
+        />
+        <AnnotationLayer pageNumber={1} zoom={zoom} />
+      </div>
     </div>
   )
 }
@@ -135,6 +144,7 @@ function PdfImageViewer({ attachment, zoom }: PdfImageViewerProps): React.JSX.El
           attachmentId={attachment.id}
           pageNumber={pageNumber}
           width={width}
+          zoom={zoom}
         />
       ))}
     </div>

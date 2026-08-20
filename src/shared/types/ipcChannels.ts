@@ -21,7 +21,9 @@ export const IpcChannels = {
     extractionUpdated: 'attachments:extractionUpdated',
     getPageImage: 'attachments:getPageImage',
     getPageCount: 'attachments:getPageCount',
-    openAtLocation: 'attachments:openAtLocation'
+    openAtLocation: 'attachments:openAtLocation',
+    getAnnotations: 'attachments:getAnnotations',
+    saveAnnotations: 'attachments:saveAnnotations'
   },
   search: {
     query: 'search:query',
