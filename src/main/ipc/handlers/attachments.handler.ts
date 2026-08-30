@@ -35,6 +35,9 @@ const saveAnnotationsSchema = z.object({
 export function registerAttachmentsHandlers(): void {
   ipcMain.handle(IpcChannels.attachments.listByLesson, (_event, payload) => {
     const { lessonId } = lessonIdSchema.parse(payload)
+    // Tra danh sach hien tai ngay; kiem tra file goc co doi khong o nen, xong
+    // se ban su kien extractionUpdated de UI tu lam moi.
+    attachmentsService.syncLessonAttachments(lessonId)
     return attachmentsService.listAttachments(lessonId)
   })
 
@@ -51,6 +54,15 @@ export function registerAttachmentsHandlers(): void {
   ipcMain.handle(IpcChannels.attachments.reextract, (_event, payload) => {
     const { id } = idSchema.parse(payload)
     attachmentsService.reextractAttachment(id)
+  })
+
+  ipcMain.handle(IpcChannels.attachments.linkSource, (_event, payload) => {
+    const { id } = idSchema.parse(payload)
+    return attachmentsService.pickAndLinkAttachmentSource(id)
+  })
+
+  ipcMain.handle(IpcChannels.attachments.bulkLinkSources, () => {
+    return attachmentsService.bulkLinkAttachmentSources()
   })
 
   ipcMain.handle(IpcChannels.attachments.getPageImage, (_event, payload) => {

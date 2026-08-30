@@ -9,6 +9,8 @@ interface ConfirmDialogProps {
   message: string
   onConfirm: () => void
   onCancel: () => void
+  confirmLabel?: string
+  cancelLabel?: string
 }
 
 function ConfirmDialog({
@@ -16,7 +18,9 @@ function ConfirmDialog({
   title,
   message,
   onConfirm,
-  onCancel
+  onCancel,
+  confirmLabel = 'Xoá',
+  cancelLabel = 'Huỷ'
 }: ConfirmDialogProps): React.JSX.Element | null {
   if (!open) return null
 
@@ -27,10 +31,10 @@ function ConfirmDialog({
         <p>{message}</p>
         <div className="confirm-actions">
           <button type="button" onClick={onCancel}>
-            Huỷ
+            {cancelLabel}
           </button>
           <button type="button" className="btn-danger" onClick={onConfirm}>
-            Xoá
+            {confirmLabel}
           </button>
         </div>
       </div>

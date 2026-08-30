@@ -2,17 +2,23 @@ import { Folder, BookOpen } from 'lucide-react'
 import EditableTitle from '@renderer/components/common/EditableTitle'
 import { useTopics, useUpdateTopic } from '@renderer/queries/topics'
 import { useLessons } from '@renderer/queries/lessons'
+import TopicQuizSection from '@renderer/components/quiz/TopicQuizSection'
+import type { QuizLaunchRequest, QuizLibraryRequest } from '@shared/types/quiz'
 
 interface TopicWorkspacePageProps {
   topicId: string
   onSelectTopic: (topicId: string) => void
   onSelectLesson: (lessonId: string) => void
+  onStartQuiz?: (req: QuizLaunchRequest) => void
+  onOpenLibrary?: (req: QuizLibraryRequest) => void
 }
 
 function TopicWorkspacePage({
   topicId,
   onSelectTopic,
-  onSelectLesson
+  onSelectLesson,
+  onStartQuiz,
+  onOpenLibrary
 }: TopicWorkspacePageProps): React.JSX.Element {
   const topicsQuery = useTopics()
   const lessonsQuery = useLessons()
@@ -86,6 +92,14 @@ function TopicWorkspacePage({
             ))}
           </ul>
         </section>
+      )}
+
+      {onStartQuiz && onOpenLibrary && (childTopics.length > 0 || childLessons.length > 0) && (
+        <TopicQuizSection
+          topic={topic}
+          onStartQuiz={onStartQuiz}
+          onOpenLibrary={onOpenLibrary}
+        />
       )}
     </div>
   )

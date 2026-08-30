@@ -17,4 +17,6 @@ export interface Attachment {
   extractedText: string | null
   extractionStatus: ExtractionStatus
   createdAt: string
+  // Duong dan file goc ngoai app - co thi app tu cap nhat khi file goc doi
+  sourcePath: string | null
 }

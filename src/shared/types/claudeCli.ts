@@ -13,5 +13,6 @@ export interface GenerateQuizFromLessonResult {
   ok: boolean
   questions?: import('./question').DraftQuestion[]
   truncated?: boolean
+  duplicatesRemoved?: number
   errorMessage?: string
 }

@@ -58,6 +58,20 @@ export function listRecentLessons(limit: number): RecentLesson[] {
   return rows
 }
 
+export function listLessonIdsUnderTopic(topicId: string): string[] {
+  const rows = getDb()
+    .prepare(
+      `WITH RECURSIVE sub(id) AS (
+         SELECT ?
+         UNION ALL
+         SELECT t.id FROM topics t JOIN sub ON t.parent_id = sub.id
+       )
+       SELECT id FROM lessons WHERE topic_id IN (SELECT id FROM sub)`
+    )
+    .all(topicId) as { id: string }[]
+  return rows.map((r) => r.id)
+}
+
 export function getLesson(id: string): Lesson | null {
   const row = getDb().prepare('SELECT * FROM lessons WHERE id = ?').get(id) as
     | LessonRow

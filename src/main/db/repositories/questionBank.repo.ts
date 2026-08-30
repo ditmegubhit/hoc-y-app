@@ -4,7 +4,8 @@ import type {
   Question,
   QuestionSource,
   QuestionStatus,
-  DraftQuestion
+  DraftQuestion,
+  UpdateQuestionInput
 } from '../../../shared/types/question'
 
 interface QuestionRow {
@@ -44,15 +45,16 @@ export function getQuestion(id: string): Question | null {
   return row ? mapQuestion(row) : null
 }
 
-export function saveDraftQuestionsFromLesson(params: {
-  lessonId: string
-  topicId: string
+export function saveDraftQuestions(params: {
   questions: DraftQuestion[]
+  source: QuestionSource
+  lessonId: string | null
+  topicId: string | null
 }): Question[] {
   const db = getDb()
   const insert = db.prepare(
     `INSERT INTO question_bank (id, question_text, options_json, explanation, source, lesson_id, topic_id, status)
-     VALUES (?, ?, ?, ?, 'ai_generated_from_lesson', ?, ?, 'draft')`
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')`
   )
   const ids: string[] = []
   const tx = db.transaction(() => {
@@ -63,6 +65,7 @@ export function saveDraftQuestionsFromLesson(params: {
         q.questionText,
         JSON.stringify(q.options),
         q.explanation,
+        params.source,
         params.lessonId,
         params.topicId
       )
@@ -73,11 +76,77 @@ export function saveDraftQuestionsFromLesson(params: {
   return ids.map((id) => getQuestion(id) as Question)
 }
 
+export function saveDraftQuestionsFromLesson(params: {
+  lessonId: string
+  topicId: string
+  questions: DraftQuestion[]
+}): Question[] {
+  return saveDraftQuestions({
+    questions: params.questions,
+    source: 'ai_generated_from_lesson',
+    lessonId: params.lessonId,
+    topicId: params.topicId
+  })
+}
+
 export function listQuestionsByLesson(lessonId: string): Question[] {
   const rows = getDb()
     .prepare('SELECT * FROM question_bank WHERE lesson_id = ? ORDER BY created_at DESC')
     .all(lessonId) as QuestionRow[]
   return rows.map(mapQuestion)
+}
+
+export function listQuestionsByLessonIds(ids: string[]): Question[] {
+  if (ids.length === 0) return []
+  const placeholders = ids.map(() => '?').join(',')
+  const rows = getDb()
+    .prepare(
+      `SELECT * FROM question_bank WHERE lesson_id IN (${placeholders}) ORDER BY created_at DESC`
+    )
+    .all(...ids) as QuestionRow[]
+  return rows.map(mapQuestion)
+}
+
+export function listQuestionsByTopic(topicId: string): Question[] {
+  const rows = getDb()
+    .prepare('SELECT * FROM question_bank WHERE topic_id = ? ORDER BY created_at DESC')
+    .all(topicId) as QuestionRow[]
+  return rows.map(mapQuestion)
+}
+
+export function listQuestionsUnderTopic(topicId: string): Question[] {
+  const rows = getDb()
+    .prepare(
+      `WITH RECURSIVE sub(id) AS (
+         SELECT ?
+         UNION ALL
+         SELECT t.id FROM topics t JOIN sub ON t.parent_id = sub.id
+       )
+       SELECT DISTINCT qb.* FROM question_bank qb
+       WHERE qb.topic_id IN (SELECT id FROM sub)
+          OR qb.lesson_id IN (SELECT id FROM lessons WHERE topic_id IN (SELECT id FROM sub))
+       ORDER BY qb.created_at DESC`
+    )
+    .all(topicId) as QuestionRow[]
+  return rows.map(mapQuestion)
+}
+
+export function updateQuestion(input: UpdateQuestionInput): Question {
+  const db = getDb()
+  const existing = db.prepare('SELECT id FROM question_bank WHERE id = ?').get(input.id)
+  if (!existing) throw new Error('Không tìm thấy câu hỏi.')
+
+  db.prepare(
+    `UPDATE question_bank
+     SET question_text = ?, options_json = ?, explanation = ?, updated_at = datetime('now')
+     WHERE id = ?`
+  ).run(
+    input.questionText,
+    JSON.stringify(input.options),
+    input.explanation,
+    input.id
+  )
+  return getQuestion(input.id) as Question
 }
 
 export function listQuestionsBySource(source: QuestionSource): Question[] {

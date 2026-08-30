@@ -9,9 +9,21 @@ import type {
 import type { Attachment } from './attachment'
 import type { Annotation, NewAnnotation } from './annotation'
 import type { SearchResultGroup, HighlightedChunkQuery, HighlightedChunk } from './search'
-import type { DraftQuestion, Question } from './question'
+import type {
+  DraftQuestion,
+  Question,
+  UpdateQuestionInput,
+  ReviewedQuestion
+} from './question'
 import type { ClaudeCliStatus, GenerateQuizFromLessonResult } from './claudeCli'
 import type { ExamFile } from './examFile'
+import type {
+  AttemptReview,
+  CreatedQuiz,
+  CreateQuizInput,
+  QuizAttemptSummary,
+  SubmitAttemptInput
+} from './quiz'
 
 export interface AppApi {
   appVersion: string
@@ -34,6 +46,8 @@ export interface AppApi {
     add: (lessonId: string) => Promise<Attachment | null>
     remove: (id: string) => Promise<void>
     reextract: (id: string) => Promise<void>
+    linkSource: (id: string) => Promise<Attachment | null>
+    bulkLinkSources: () => Promise<{ total: number; matched: number; ambiguous: number } | null>
     onExtractionUpdated: (callback: (attachmentId: string) => void) => () => void
     getPageImage: (input: {
       attachmentId: string
@@ -63,12 +77,36 @@ export interface AppApi {
       lessonId: string
       numQuestions: number
     }) => Promise<GenerateQuizFromLessonResult>
+    generateQuizFromLessons: (input: {
+      lessonIds: string[]
+      numQuestions: number
+      topicId?: string | null
+    }) => Promise<GenerateQuizFromLessonResult>
     saveDraftQuestions: (input: {
-      lessonId: string
       questions: DraftQuestion[]
+      lessonId?: string | null
+      topicId?: string | null
     }) => Promise<Question[]>
     listQuestionsByLesson: (lessonId: string) => Promise<Question[]>
+    listQuestionsByLessonIds: (lessonIds: string[]) => Promise<Question[]>
+    listQuestionsByTopic: (topicId: string) => Promise<Question[]>
+    listQuestionsUnderTopic: (topicId: string) => Promise<Question[]>
+    updateQuestion: (input: UpdateQuestionInput) => Promise<Question>
+    reviewQuestions: (input: { questionIds: string[] }) => Promise<ReviewedQuestion[]>
     deleteQuestion: (id: string) => Promise<void>
+  }
+  quiz: {
+    listPlayableForLesson: (lessonId: string) => Promise<Question[]>
+    listPlayableForTopic: (input: {
+      topicId: string
+      lessonIds: string[]
+    }) => Promise<Question[]>
+    create: (input: CreateQuizInput) => Promise<CreatedQuiz>
+    submitAttempt: (input: SubmitAttemptInput) => Promise<AttemptReview>
+    listAttemptsByLesson: (lessonId: string) => Promise<QuizAttemptSummary[]>
+    listAttemptsByTopic: (topicId: string) => Promise<QuizAttemptSummary[]>
+    getAttemptReview: (attemptId: string) => Promise<AttemptReview | null>
+    deleteAttempt: (attemptId: string) => Promise<void>
   }
   questionBank: {
     countAll: () => Promise<number>
@@ -77,5 +115,8 @@ export interface AppApi {
     list: () => Promise<ExamFile[]>
     add: () => Promise<ExamFile | null>
     remove: (id: string) => Promise<void>
+  }
+  notes: {
+    pickImage: () => Promise<{ mimeType: string; base64: string } | null>
   }
 }

@@ -43,6 +43,16 @@ export function storeExamFile(
   return storeFileIn(examFilesDir(), sourcePath)
 }
 
+// Xoa 1 file da luu (vd: sau khi thay ban sao cu bang ban moi luc dong bo lai
+// tu file goc). Nuot loi - file co the da khong con.
+export async function deleteStoredFile(path: string): Promise<void> {
+  try {
+    await unlink(path)
+  } catch {
+    // ignore
+  }
+}
+
 const HIGHLIGHT_TEMP_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
 // Goi luc app khoi dong - file tam to mau khong tu xoa ngay sau khi mo (khong

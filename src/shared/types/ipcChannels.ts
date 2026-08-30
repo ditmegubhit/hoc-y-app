@@ -18,6 +18,8 @@ export const IpcChannels = {
     add: 'attachments:add',
     remove: 'attachments:remove',
     reextract: 'attachments:reextract',
+    linkSource: 'attachments:linkSource',
+    bulkLinkSources: 'attachments:bulkLinkSources',
     extractionUpdated: 'attachments:extractionUpdated',
     getPageImage: 'attachments:getPageImage',
     getPageCount: 'attachments:getPageCount',
@@ -32,9 +34,25 @@ export const IpcChannels = {
   ai: {
     checkAvailability: 'ai:checkAvailability',
     generateQuizFromLesson: 'ai:generateQuizFromLesson',
+    generateQuizFromLessons: 'ai:generateQuizFromLessons',
     saveDraftQuestions: 'ai:saveDraftQuestions',
     listQuestionsByLesson: 'ai:listQuestionsByLesson',
+    listQuestionsByLessonIds: 'ai:listQuestionsByLessonIds',
+    listQuestionsByTopic: 'ai:listQuestionsByTopic',
+    listQuestionsUnderTopic: 'ai:listQuestionsUnderTopic',
+    updateQuestion: 'ai:updateQuestion',
+    reviewQuestions: 'ai:reviewQuestions',
     deleteQuestion: 'ai:deleteQuestion'
+  },
+  quiz: {
+    listPlayableForLesson: 'quiz:listPlayableForLesson',
+    listPlayableForTopic: 'quiz:listPlayableForTopic',
+    create: 'quiz:create',
+    submitAttempt: 'quiz:submitAttempt',
+    listAttemptsByLesson: 'quiz:listAttemptsByLesson',
+    listAttemptsByTopic: 'quiz:listAttemptsByTopic',
+    getAttemptReview: 'quiz:getAttemptReview',
+    deleteAttempt: 'quiz:deleteAttempt'
   },
   questionBank: {
     countAll: 'questionBank:countAll'
@@ -43,5 +61,8 @@ export const IpcChannels = {
     list: 'examFiles:list',
     add: 'examFiles:add',
     remove: 'examFiles:remove'
+  },
+  notes: {
+    pickImage: 'notes:pickImage'
   }
 } as const

@@ -32,3 +32,19 @@ export function useReextractAttachment(lessonId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: attachmentsQueryKey(lessonId) })
   })
 }
+
+export function useLinkAttachmentSource(lessonId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => window.api.attachments.linkSource(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: attachmentsQueryKey(lessonId) })
+  })
+}
+
+export function useBulkLinkAttachmentSources(lessonId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => window.api.attachments.bulkLinkSources(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: attachmentsQueryKey(lessonId) })
+  })
+}

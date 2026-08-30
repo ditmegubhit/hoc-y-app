@@ -24,6 +24,8 @@ const api: AppApi = {
     add: (lessonId) => ipcRenderer.invoke(IpcChannels.attachments.add, { lessonId }),
     remove: (id) => ipcRenderer.invoke(IpcChannels.attachments.remove, { id }),
     reextract: (id) => ipcRenderer.invoke(IpcChannels.attachments.reextract, { id }),
+    linkSource: (id) => ipcRenderer.invoke(IpcChannels.attachments.linkSource, { id }),
+    bulkLinkSources: () => ipcRenderer.invoke(IpcChannels.attachments.bulkLinkSources),
     onExtractionUpdated: (callback) => {
       const listener = (
         _event: Electron.IpcRendererEvent,
@@ -47,10 +49,36 @@ const api: AppApi = {
     checkAvailability: () => ipcRenderer.invoke(IpcChannels.ai.checkAvailability),
     generateQuizFromLesson: (input) =>
       ipcRenderer.invoke(IpcChannels.ai.generateQuizFromLesson, input),
+    generateQuizFromLessons: (input) =>
+      ipcRenderer.invoke(IpcChannels.ai.generateQuizFromLessons, input),
     saveDraftQuestions: (input) => ipcRenderer.invoke(IpcChannels.ai.saveDraftQuestions, input),
     listQuestionsByLesson: (lessonId) =>
       ipcRenderer.invoke(IpcChannels.ai.listQuestionsByLesson, { lessonId }),
+    listQuestionsByLessonIds: (lessonIds) =>
+      ipcRenderer.invoke(IpcChannels.ai.listQuestionsByLessonIds, { lessonIds }),
+    listQuestionsByTopic: (topicId) =>
+      ipcRenderer.invoke(IpcChannels.ai.listQuestionsByTopic, { topicId }),
+    listQuestionsUnderTopic: (topicId) =>
+      ipcRenderer.invoke(IpcChannels.ai.listQuestionsUnderTopic, { topicId }),
+    updateQuestion: (input) => ipcRenderer.invoke(IpcChannels.ai.updateQuestion, input),
+    reviewQuestions: (input) => ipcRenderer.invoke(IpcChannels.ai.reviewQuestions, input),
     deleteQuestion: (id) => ipcRenderer.invoke(IpcChannels.ai.deleteQuestion, { id })
+  },
+  quiz: {
+    listPlayableForLesson: (lessonId) =>
+      ipcRenderer.invoke(IpcChannels.quiz.listPlayableForLesson, { lessonId }),
+    listPlayableForTopic: (input) =>
+      ipcRenderer.invoke(IpcChannels.quiz.listPlayableForTopic, input),
+    create: (input) => ipcRenderer.invoke(IpcChannels.quiz.create, input),
+    submitAttempt: (input) => ipcRenderer.invoke(IpcChannels.quiz.submitAttempt, input),
+    listAttemptsByLesson: (lessonId) =>
+      ipcRenderer.invoke(IpcChannels.quiz.listAttemptsByLesson, { lessonId }),
+    listAttemptsByTopic: (topicId) =>
+      ipcRenderer.invoke(IpcChannels.quiz.listAttemptsByTopic, { topicId }),
+    getAttemptReview: (attemptId) =>
+      ipcRenderer.invoke(IpcChannels.quiz.getAttemptReview, { attemptId }),
+    deleteAttempt: (attemptId) =>
+      ipcRenderer.invoke(IpcChannels.quiz.deleteAttempt, { attemptId })
   },
   questionBank: {
     countAll: () => ipcRenderer.invoke(IpcChannels.questionBank.countAll)
@@ -59,6 +87,9 @@ const api: AppApi = {
     list: () => ipcRenderer.invoke(IpcChannels.examFiles.list),
     add: () => ipcRenderer.invoke(IpcChannels.examFiles.add),
     remove: (id) => ipcRenderer.invoke(IpcChannels.examFiles.remove, { id })
+  },
+  notes: {
+    pickImage: () => ipcRenderer.invoke(IpcChannels.notes.pickImage)
   }
 }
 

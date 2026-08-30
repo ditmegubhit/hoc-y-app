@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { app } from 'electron'
 import { scriptsDir } from './scriptsPath'
@@ -78,6 +78,16 @@ function runExportScript(
 // nhau (vd getPageCount va getPageImage cho nhieu trang cung goi luc panel
 // vua mo).
 const inFlight = new Map<string, Promise<string | null>>()
+
+// Goi khi noi dung file docx/pptx doi (dong bo lai tu file goc) - xoa PDF cache
+// cu de lan mo panel sau chuyen doi lai.
+export async function invalidateOfficePdfCache(attachmentId: string): Promise<void> {
+  try {
+    await unlink(cachedPdfPath(attachmentId))
+  } catch {
+    // chua co cache thi thoi
+  }
+}
 
 export async function ensureOfficePdf(
   attachmentId: string,

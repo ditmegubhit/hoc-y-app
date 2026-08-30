@@ -9,6 +9,9 @@ import SettingsPage from './pages/SettingsPage'
 import ExamBankPage from './pages/ExamBankPage'
 import SearchBar from './components/search/SearchBar'
 import ResizeHandle from './components/common/ResizeHandle'
+import QuizPlayOverlay from './components/quiz/QuizPlayOverlay'
+import QuizLibraryOverlay from './components/quiz/QuizLibraryOverlay'
+import type { QuizLaunchRequest, QuizLibraryRequest } from '@shared/types/quiz'
 
 type View = 'home' | 'lesson' | 'topic' | 'settings' | 'examBank'
 
@@ -31,6 +34,8 @@ function App(): React.JSX.Element {
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
   const [searchKeyword, setSearchKeyword] = useState('')
   const [sidebarWidth, setSidebarWidth] = useState(readStoredSidebarWidth)
+  const [activeQuiz, setActiveQuiz] = useState<QuizLaunchRequest | null>(null)
+  const [activeLibrary, setActiveLibrary] = useState<QuizLibraryRequest | null>(null)
 
   const handleSidebarWidthChange = (width: number): void => {
     setSidebarWidth(width)
@@ -54,7 +59,16 @@ function App(): React.JSX.Element {
     setSearchKeyword('')
   }
 
+  const handleStartQuiz = (req: QuizLaunchRequest): void => {
+    setActiveQuiz(req)
+  }
+
+  const handleOpenLibrary = (req: QuizLibraryRequest): void => {
+    setActiveLibrary(req)
+  }
+
   return (
+    <>
     <div className="app-layout">
       <aside className="app-sidebar" style={{ width: sidebarWidth }}>
         <ResizeHandle
@@ -119,7 +133,11 @@ function App(): React.JSX.Element {
         </div>
         <div className="app-main-content">
           {view === 'lesson' ? (
-            <LessonWorkspacePage lessonId={selectedLessonId} />
+            <LessonWorkspacePage
+              lessonId={selectedLessonId}
+              onStartQuiz={handleStartQuiz}
+              onOpenLibrary={handleOpenLibrary}
+            />
           ) : searchKeyword.trim() ? (
             <SearchResultsPage keyword={searchKeyword} onSelectLesson={handleSelectLesson} />
           ) : view === 'topic' && selectedTopicId ? (
@@ -127,6 +145,8 @@ function App(): React.JSX.Element {
               topicId={selectedTopicId}
               onSelectTopic={handleSelectTopic}
               onSelectLesson={handleSelectLesson}
+              onStartQuiz={handleStartQuiz}
+              onOpenLibrary={handleOpenLibrary}
             />
           ) : view === 'settings' ? (
             <SettingsPage />
@@ -138,6 +158,13 @@ function App(): React.JSX.Element {
         </div>
       </main>
     </div>
+      {activeQuiz && (
+        <QuizPlayOverlay request={activeQuiz} onExit={() => setActiveQuiz(null)} />
+      )}
+      {activeLibrary && (
+        <QuizLibraryOverlay request={activeLibrary} onClose={() => setActiveLibrary(null)} />
+      )}
+    </>
   )
 }
 

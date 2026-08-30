@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Paperclip, Plus, RotateCcw, X } from 'lucide-react'
+import { Paperclip, Plus, RotateCcw, X, RefreshCw, Link2 } from 'lucide-react'
 import {
   attachmentsQueryKey,
   useAttachments,
   useAddAttachment,
   useRemoveAttachment,
-  useReextractAttachment
+  useReextractAttachment,
+  useLinkAttachmentSource,
+  useBulkLinkAttachmentSources
 } from '@renderer/queries/attachments'
 import ConfirmDialog from '@renderer/components/common/ConfirmDialog'
 import type { LessonWidgetProps } from '../widgetRegistry'
@@ -42,9 +44,32 @@ function AttachmentsWidget({
   const addAttachment = useAddAttachment(lesson.id)
   const removeAttachment = useRemoveAttachment(lesson.id)
   const reextractAttachment = useReextractAttachment(lesson.id)
+  const linkSource = useLinkAttachmentSource(lesson.id)
+  const bulkLinkSources = useBulkLinkAttachmentSources(lesson.id)
   const [pendingDelete, setPendingDelete] = useState<{ id: string; fileName: string } | null>(
     null
   )
+  const [bulkNotice, setBulkNotice] = useState<string | null>(null)
+
+  const unlinkedCount = attachmentsQuery.data?.filter((a) => !a.sourcePath).length ?? 0
+
+  const handleBulkLink = (): void => {
+    setBulkNotice(null)
+    bulkLinkSources.mutate(undefined, {
+      onSuccess: (res) => {
+        if (!res) return
+        if (res.total === 0) {
+          setBulkNotice('Mọi file đã được liên kết file gốc.')
+          return
+        }
+        const parts = [`Đã liên kết ${res.matched}/${res.total} file`]
+        if (res.ambiguous > 0) parts.push(`${res.ambiguous} file trùng tên (bỏ qua)`)
+        const remain = res.total - res.matched
+        if (remain > 0) parts.push(`${remain} file chưa tìm thấy — liên kết thủ công`)
+        setBulkNotice(parts.join(' · '))
+      }
+    })
+  }
 
   useEffect(() => {
     const unsubscribe = window.api.attachments.onExtractionUpdated(() => {
@@ -58,14 +83,30 @@ function AttachmentsWidget({
       <h3>
         <Paperclip size={16} /> File đính kèm
       </h3>
-      <button
-        type="button"
-        className="btn-secondary"
-        disabled={addAttachment.isPending}
-        onClick={() => addAttachment.mutate()}
-      >
-        <Plus size={14} /> Thêm file (PDF / Word / PowerPoint / Ảnh)
-      </button>
+      <div className="attachment-actions">
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={addAttachment.isPending}
+          onClick={() => addAttachment.mutate()}
+        >
+          <Plus size={14} /> Thêm file (PDF / Word / PowerPoint / Ảnh)
+        </button>
+        {unlinkedCount > 0 && (
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={bulkLinkSources.isPending}
+            title="Chọn 1 thư mục chứa các file gốc — app sẽ tự khớp theo tên file"
+            onClick={handleBulkLink}
+          >
+            <Link2 size={14} />{' '}
+            {bulkLinkSources.isPending ? 'Đang liên kết...' : 'Liên kết file gốc hàng loạt'}
+          </button>
+        )}
+      </div>
+
+      {bulkNotice && <p className="quiz-generate-hint">{bulkNotice}</p>}
 
       {attachmentsQuery.data && attachmentsQuery.data.length === 0 && (
         <p className="lesson-widget-placeholder">Chưa có file nào được đính kèm.</p>
@@ -79,7 +120,28 @@ function AttachmentsWidget({
             onClick={() => onOpenAttachment(att)}
           >
             <span className="attachment-name">{att.fileName}</span>
+            {att.sourcePath && (
+              <span
+                className="attachment-sync-icon"
+                title="Tự cập nhật trong app khi file gốc trên máy thay đổi"
+              >
+                <RefreshCw size={12} />
+              </span>
+            )}
             <span className="attachment-size">{formatSize(att.fileSizeBytes)}</span>
+            {!att.sourcePath && (
+              <button
+                type="button"
+                title="Liên kết file gốc để tự cập nhật khi file thay đổi"
+                disabled={linkSource.isPending}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  linkSource.mutate(att.id)
+                }}
+              >
+                <Link2 size={13} />
+              </button>
+            )}
             <span className={`attachment-status attachment-status-${att.extractionStatus}`}>
               {STATUS_LABEL[att.extractionStatus] ?? att.extractionStatus}
             </span>

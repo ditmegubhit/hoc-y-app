@@ -13,6 +13,27 @@ export interface DraftQuestion {
   explanation: string | null
 }
 
+export interface UpdateQuestionInput {
+  id: string
+  questionText: string
+  options: QuestionOption[]
+  explanation: string | null
+}
+
+export interface QuestionDraftContent {
+  questionText: string
+  options: QuestionOption[]
+  explanation: string | null
+}
+
+// Ket qua luot "Ra soat & cai tien" cho 1 cau da luu
+export interface ReviewedQuestion {
+  id: string
+  changed: boolean
+  original: QuestionDraftContent
+  improved: QuestionDraftContent
+}
+
 export interface Question extends DraftQuestion {
   id: string
   source: QuestionSource

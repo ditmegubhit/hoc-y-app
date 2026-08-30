@@ -12,9 +12,12 @@ import UnsavedAnnotationsDialog from '@renderer/components/lesson/UnsavedAnnotat
 import { useAnnotationStore } from '@renderer/stores/annotationStore'
 import { persistAnnotations } from '@renderer/lib/annotationPersistence'
 import type { Attachment } from '@shared/types/attachment'
+import type { QuizLaunchRequest, QuizLibraryRequest } from '@shared/types/quiz'
 
 interface LessonWorkspacePageProps {
   lessonId: string | null
+  onStartQuiz?: (req: QuizLaunchRequest) => void
+  onOpenLibrary?: (req: QuizLibraryRequest) => void
 }
 
 const PANEL_WIDTH_STORAGE_KEY = 'lessonAttachmentPanelWidth'
@@ -28,7 +31,11 @@ function readStoredPanelWidth(): number {
 
 type PendingAction = { type: 'switch'; attachment: Attachment } | { type: 'close' }
 
-function LessonWorkspacePage({ lessonId }: LessonWorkspacePageProps): React.JSX.Element {
+function LessonWorkspacePage({
+  lessonId,
+  onStartQuiz,
+  onOpenLibrary
+}: LessonWorkspacePageProps): React.JSX.Element {
   const { data: lesson, isLoading } = useLesson(lessonId)
   const updateLesson = useUpdateLesson()
   const [activeAttachment, setActiveAttachment] = useState<Attachment | null>(null)
@@ -108,7 +115,14 @@ function LessonWorkspacePage({ lessonId }: LessonWorkspacePageProps): React.JSX.
           />
           {defaultLessonLayout.map((kind) => {
             const Widget = lessonWidgetRegistry[kind]
-            return <Widget key={kind} lesson={lesson} />
+            return (
+              <Widget
+                key={kind}
+                lesson={lesson}
+                onStartQuiz={onStartQuiz}
+                onOpenLibrary={onOpenLibrary}
+              />
+            )
           })}
         </div>
       </div>

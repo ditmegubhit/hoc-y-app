@@ -3,12 +3,20 @@ import { z } from 'zod'
 import { IpcChannels } from '../../../shared/types/ipcChannels'
 import { checkClaudeCliAvailability } from '../../services/claudeCli/checkAvailability'
 import { generateQuizFromLesson } from '../../services/claudeCli/generateQuizFromLesson'
+import { generateQuizFromLessons } from '../../services/claudeCli/generateQuizFromLessons'
+import { reviewQuestionBankEntries } from '../../services/claudeCli/reviewQuestions'
 import * as questionBankRepo from '../../db/repositories/questionBank.repo'
 import * as lessonsRepo from '../../db/repositories/lessons.repo'
 
 const generateSchema = z.object({
   lessonId: z.string(),
   numQuestions: z.number().int().min(1).max(20)
+})
+
+const generateManySchema = z.object({
+  lessonIds: z.array(z.string()).min(1),
+  numQuestions: z.number().int().min(1).max(50),
+  topicId: z.string().nullable().optional()
 })
 
 const optionSchema = z.object({
@@ -18,18 +26,33 @@ const optionSchema = z.object({
 })
 
 const saveDraftSchema = z.object({
-  lessonId: z.string(),
   questions: z.array(
     z.object({
       questionText: z.string().min(1),
       options: z.array(optionSchema).min(2),
       explanation: z.string().nullable()
     })
-  )
+  ),
+  lessonId: z.string().nullable().optional(),
+  topicId: z.string().nullable().optional()
 })
 
 const idSchema = z.object({ id: z.string() })
 const lessonIdSchema = z.object({ lessonId: z.string() })
+const lessonIdsSchema = z.object({ lessonIds: z.array(z.string()) })
+const topicIdSchema = z.object({ topicId: z.string() })
+
+const updateQuestionSchema = z.object({
+  id: z.string(),
+  questionText: z.string().min(1),
+  options: z
+    .array(optionSchema)
+    .min(2)
+    .refine((opts) => opts.filter((o) => o.isCorrect).length === 1, {
+      message: 'Phải có đúng một đáp án đúng.'
+    }),
+  explanation: z.string().nullable()
+})
 
 export function registerAiHandlers(): void {
   ipcMain.handle(IpcChannels.ai.checkAvailability, () => checkClaudeCliAvailability())
@@ -39,20 +62,84 @@ export function registerAiHandlers(): void {
     return generateQuizFromLesson(input)
   })
 
+  ipcMain.handle(IpcChannels.ai.generateQuizFromLessons, (_event, payload) => {
+    const input = generateManySchema.parse(payload)
+    const titles = input.lessonIds
+      .map((id) => lessonsRepo.getLesson(id)?.title)
+      .filter((t): t is string => Boolean(t))
+    const subjectTitle =
+      titles.length === 1 ? `bài học "${titles[0]}"` : `${input.lessonIds.length} bài học đã chọn`
+
+    // Cau da co (theo pham vi) de tranh trung: uu tien toan bo cau duoi chu de
+    // neu co topicId, khong thi lay theo cac bai da chon.
+    const existingQuestionTexts = (
+      input.topicId
+        ? questionBankRepo.listQuestionsUnderTopic(input.topicId)
+        : questionBankRepo.listQuestionsByLessonIds(input.lessonIds)
+    ).map((q) => q.questionText)
+
+    return generateQuizFromLessons({
+      lessonIds: input.lessonIds,
+      numQuestions: input.numQuestions,
+      subjectTitle,
+      existingQuestionTexts
+    })
+  })
+
   ipcMain.handle(IpcChannels.ai.saveDraftQuestions, (_event, payload) => {
     const input = saveDraftSchema.parse(payload)
-    const lesson = lessonsRepo.getLesson(input.lessonId)
-    if (!lesson) throw new Error('Không tìm thấy bài học.')
-    return questionBankRepo.saveDraftQuestionsFromLesson({
-      lessonId: input.lessonId,
-      topicId: lesson.topicId,
-      questions: input.questions
+
+    let lessonId = input.lessonId ?? null
+    let topicId = input.topicId ?? null
+
+    if (lessonId) {
+      const lesson = lessonsRepo.getLesson(lessonId)
+      if (!lesson) throw new Error('Không tìm thấy bài học.')
+      topicId = lesson.topicId
+    } else if (!topicId) {
+      throw new Error('Thiếu bài học hoặc chủ đề để lưu câu hỏi.')
+    } else {
+      lessonId = null
+    }
+
+    return questionBankRepo.saveDraftQuestions({
+      questions: input.questions,
+      source: 'ai_generated_from_lesson',
+      lessonId,
+      topicId
     })
   })
 
   ipcMain.handle(IpcChannels.ai.listQuestionsByLesson, (_event, payload) => {
     const { lessonId } = lessonIdSchema.parse(payload)
     return questionBankRepo.listQuestionsByLesson(lessonId)
+  })
+
+  ipcMain.handle(IpcChannels.ai.listQuestionsByLessonIds, (_event, payload) => {
+    const { lessonIds } = lessonIdsSchema.parse(payload)
+    return questionBankRepo.listQuestionsByLessonIds(lessonIds)
+  })
+
+  ipcMain.handle(IpcChannels.ai.listQuestionsByTopic, (_event, payload) => {
+    const { topicId } = topicIdSchema.parse(payload)
+    return questionBankRepo.listQuestionsByTopic(topicId)
+  })
+
+  ipcMain.handle(IpcChannels.ai.listQuestionsUnderTopic, (_event, payload) => {
+    const { topicId } = topicIdSchema.parse(payload)
+    return questionBankRepo.listQuestionsUnderTopic(topicId)
+  })
+
+  ipcMain.handle(IpcChannels.ai.updateQuestion, (_event, payload) => {
+    const input = updateQuestionSchema.parse(payload)
+    return questionBankRepo.updateQuestion(input)
+  })
+
+  ipcMain.handle(IpcChannels.ai.reviewQuestions, async (_event, payload) => {
+    const { questionIds } = z.object({ questionIds: z.array(z.string()).min(1) }).parse(payload)
+    const res = await reviewQuestionBankEntries(questionIds)
+    if (!res.ok || !res.reviewed) throw new Error(res.errorMessage ?? 'Rà soát thất bại.')
+    return res.reviewed
   })
 
   ipcMain.handle(IpcChannels.ai.deleteQuestion, (_event, payload) => {

@@ -18,6 +18,8 @@ interface AttachmentRow {
   extracted_text: string | null
   extraction_status: string
   created_at: string
+  source_path: string | null
+  source_mtime_ms: number | null
 }
 
 function mapAttachment(row: AttachmentRow): Attachment {
@@ -30,8 +32,67 @@ function mapAttachment(row: AttachmentRow): Attachment {
     fileSizeBytes: row.file_size_bytes,
     extractedText: row.extracted_text,
     extractionStatus: row.extraction_status as ExtractionStatus,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    sourcePath: row.source_path
   }
+}
+
+export interface SyncableAttachment {
+  id: string
+  lessonId: string
+  storedPath: string
+  sourcePath: string
+  sourceMtimeMs: number | null
+}
+
+function mapSyncable(row: AttachmentRow): SyncableAttachment {
+  return {
+    id: row.id,
+    lessonId: row.lesson_id,
+    storedPath: row.stored_path,
+    sourcePath: row.source_path as string,
+    sourceMtimeMs: row.source_mtime_ms
+  }
+}
+
+export function listSyncableAttachments(lessonId?: string): SyncableAttachment[] {
+  const db = getDb()
+  const rows = (
+    lessonId
+      ? db
+          .prepare('SELECT * FROM attachments WHERE source_path IS NOT NULL AND lesson_id = ?')
+          .all(lessonId)
+      : db.prepare('SELECT * FROM attachments WHERE source_path IS NOT NULL').all()
+  ) as AttachmentRow[]
+  return rows.map(mapSyncable)
+}
+
+export function updateAttachmentSource(
+  id: string,
+  params: { storedPath: string; fileSizeBytes: number; sourceMtimeMs: number }
+): void {
+  getDb()
+    .prepare(
+      'UPDATE attachments SET stored_path = ?, file_size_bytes = ?, source_mtime_ms = ? WHERE id = ?'
+    )
+    .run(params.storedPath, params.fileSizeBytes, params.sourceMtimeMs, id)
+}
+
+// Chi gan lien ket file goc (khong dung stored_path) - dung khi lien ket lai
+// cac file da them tu truoc. source_mtime_ms de null => lan sync toi se keo
+// noi dung hien tai ve.
+export function linkAttachmentSource(id: string, sourcePath: string): void {
+  getDb()
+    .prepare('UPDATE attachments SET source_path = ?, source_mtime_ms = NULL WHERE id = ?')
+    .run(sourcePath, id)
+}
+
+export function listAttachmentsWithoutSource(): { id: string; fileName: string }[] {
+  return getDb()
+    .prepare(
+      'SELECT id, file_name AS fileName FROM attachments WHERE source_path IS NULL ORDER BY created_at'
+    )
+    .all() as { id: string; fileName: string }[]
 }
 
 export function listAttachmentsByLesson(lessonId: string): Attachment[] {
@@ -55,12 +116,14 @@ export function createAttachment(input: {
   storedPath: string
   fileSizeBytes: number
   extractionStatus: ExtractionStatus
+  sourcePath?: string | null
+  sourceMtimeMs?: number | null
 }): Attachment {
   const db = getDb()
   const id = randomUUID()
   db.prepare(
-    `INSERT INTO attachments (id, lesson_id, file_name, file_type, stored_path, file_size_bytes, extraction_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO attachments (id, lesson_id, file_name, file_type, stored_path, file_size_bytes, extraction_status, source_path, source_mtime_ms)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     input.lessonId,
@@ -68,7 +131,9 @@ export function createAttachment(input: {
     input.fileType,
     input.storedPath,
     input.fileSizeBytes,
-    input.extractionStatus
+    input.extractionStatus,
+    input.sourcePath ?? null,
+    input.sourceMtimeMs ?? null
   )
   return getAttachment(id) as Attachment
 }

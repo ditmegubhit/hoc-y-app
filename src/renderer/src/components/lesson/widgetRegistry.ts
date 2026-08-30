@@ -1,10 +1,13 @@
 import type { ComponentType } from 'react'
 import type { Lesson, LessonWidgetKind } from '@shared/types/lesson'
+import type { QuizLaunchRequest, QuizLibraryRequest } from '@shared/types/quiz'
 import NotesWidget from './widgets/NotesWidget'
 import QuizAiSection from '../quiz/QuizAiSection'
 
 export interface LessonWidgetProps {
   lesson: Lesson
+  onStartQuiz?: (req: QuizLaunchRequest) => void
+  onOpenLibrary?: (req: QuizLibraryRequest) => void
 }
 
 // 'attachments' khong nam trong registry generic nay - no duoc render rieng
