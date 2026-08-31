@@ -1,10 +1,16 @@
 import { useState } from 'react'
-import { Wand2 } from 'lucide-react'
+import { Wand2, Cpu, Cloud } from 'lucide-react'
 import type { Question, ReviewedQuestion } from '@shared/types/question'
 import type { QuizLibraryRequest } from '@shared/types/quiz'
+import type { AiProvider } from '@shared/types/ai'
 import ConfirmDialog from '@renderer/components/common/ConfirmDialog'
 import { useQuestionsByLesson, useQuestionsUnderTopic } from '@renderer/queries/questionBank'
-import { useDeleteQuestion, useReviewQuestions, type QuizScope } from '@renderer/queries/quiz'
+import {
+  useDeleteQuestion,
+  useOllamaStatus,
+  useReviewQuestions,
+  type QuizScope
+} from '@renderer/queries/quiz'
 import { useRecentQuestionsStore } from '@renderer/stores/recentQuestionsStore'
 import QuestionEditForm from './QuestionEditForm'
 import QuizReviewPanel from './QuizReviewPanel'
@@ -96,11 +102,18 @@ function QuizLibraryOverlay({ request, onClose }: QuizLibraryOverlayProps): Reac
   const recentIds = useRecentQuestionsStore((s) => s.ids)
 
   const reviewMutation = useReviewQuestions()
+  const ollamaQuery = useOllamaStatus()
+  const ollamaReady = ollamaQuery.data?.status === 'ready'
   const [reviewResults, setReviewResults] = useState<ReviewedQuestion[] | null>(null)
 
-  const handleReview = (): void => {
+  // Chi ra soat cac cau VUA SOAN (bôi xanh) - khong dung ca ngan hang.
+  const reviewableIds = questions.filter((q) => recentIds.has(q.id)).map((q) => q.id)
+  const canReview = reviewableIds.length > 0
+
+  const handleReview = (provider: AiProvider): void => {
+    if (!canReview) return
     reviewMutation.mutate(
-      questions.map((q) => q.id),
+      { questionIds: reviewableIds, provider },
       { onSuccess: (res) => setReviewResults(res) }
     )
   }
@@ -115,15 +128,44 @@ function QuizLibraryOverlay({ request, onClose }: QuizLibraryOverlayProps): Reac
           </div>
           <div className="quiz-library-header-actions">
             {reviewResults === null && questions.length > 0 && (
-              <button
-                type="button"
-                className="btn-secondary"
-                disabled={reviewMutation.isPending}
-                onClick={handleReview}
-              >
-                <Wand2 size={14} />{' '}
-                {reviewMutation.isPending ? 'Đang rà soát...' : 'Rà soát & cải tiến (AI)'}
-              </button>
+              reviewMutation.isPending ? (
+                <span className="quiz-review-status">
+                  <Wand2 size={14} /> Đang rà soát {reviewableIds.length} câu...
+                </span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={!ollamaReady || !canReview}
+                    title={
+                      !canReview
+                        ? 'Chỉ rà soát các câu vừa soạn (bôi xanh) — chưa có câu nào'
+                        : !ollamaReady
+                          ? 'Ollama chưa sẵn sàng'
+                          : undefined
+                    }
+                    onClick={() => handleReview('ollama')}
+                  >
+                    <Cpu size={14} /> Rà soát {canReview ? `${reviewableIds.length} câu mới ` : ''}
+                    bằng máy
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={!canReview}
+                    title={
+                      !canReview
+                        ? 'Chỉ rà soát các câu vừa soạn (bôi xanh) — chưa có câu nào'
+                        : undefined
+                    }
+                    onClick={() => handleReview('claude')}
+                  >
+                    <Cloud size={14} /> Rà soát {canReview ? `${reviewableIds.length} câu mới ` : ''}
+                    bằng Claude
+                  </button>
+                </>
+              )
             )}
             <button type="button" className="btn-secondary" onClick={onClose}>
               Đóng

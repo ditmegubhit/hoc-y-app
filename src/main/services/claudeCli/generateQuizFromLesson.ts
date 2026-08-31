@@ -2,11 +2,13 @@ import { generateQuizFromContent } from './generateQuizFromLessons'
 import { collectLessonContentPieces } from './lessonContent'
 import * as lessonsRepo from '../../db/repositories/lessons.repo'
 import * as questionBankRepo from '../../db/repositories/questionBank.repo'
+import type { AiProvider } from '../../../shared/types/ai'
 import type { GenerateQuizFromLessonResult } from '../../../shared/types/claudeCli'
 
 export async function generateQuizFromLesson(params: {
   lessonId: string
   numQuestions: number
+  provider?: AiProvider
 }): Promise<GenerateQuizFromLessonResult> {
   const lesson = lessonsRepo.getLesson(params.lessonId)
   if (!lesson) return { ok: false, errorMessage: 'Không tìm thấy bài học.' }
@@ -27,6 +29,8 @@ export async function generateQuizFromLesson(params: {
     subjectTitle: `bài học "${lesson.title}"`,
     contentPieces: pieces,
     numQuestions: params.numQuestions,
-    existingQuestionTexts
+    existingQuestionTexts,
+    provider: params.provider,
+    scope: { lessonIds: [params.lessonId] }
   })
 }

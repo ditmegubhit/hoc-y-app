@@ -33,6 +33,9 @@ export const IpcChannels = {
   },
   ai: {
     checkAvailability: 'ai:checkAvailability',
+    checkOllama: 'ai:checkOllama',
+    getAiSettings: 'ai:getAiSettings',
+    setAiSettings: 'ai:setAiSettings',
     generateQuizFromLesson: 'ai:generateQuizFromLesson',
     generateQuizFromLessons: 'ai:generateQuizFromLessons',
     saveDraftQuestions: 'ai:saveDraftQuestions',
@@ -42,6 +45,7 @@ export const IpcChannels = {
     listQuestionsUnderTopic: 'ai:listQuestionsUnderTopic',
     updateQuestion: 'ai:updateQuestion',
     reviewQuestions: 'ai:reviewQuestions',
+    recordLearningExamples: 'ai:recordLearningExamples',
     deleteQuestion: 'ai:deleteQuestion'
   },
   quiz: {

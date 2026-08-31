@@ -1,6 +1,8 @@
 // Bo tieu chi chat luong cho cau hoi trac nghiem - dung chung cho ca luot "ra
 // soat & sua" sau khi sinh cau moi va nut "Ra soat & cai tien" tren ngan hang.
 
+import type { AiProvider } from '../../../../shared/types/ai'
+
 export const QUIZ_QUALITY_CHECKLIST = `TIÊU CHÍ CHẤT LƯỢNG (áp dụng cho TỪNG câu):
 1. Kiến thức: chính xác về mặt y khoa và ĐÚNG với nội dung nguồn. Loại bỏ thông tin mơ hồ, sai lệch, lỗi thời.
 2. Đúng một đáp án đúng RÕ RÀNG; ba phương án còn lại phải THỰC SỰ SAI trong bối cảnh câu hỏi.
@@ -16,16 +18,55 @@ export const QUIZ_QUALITY_CHECKLIST = `TIÊU CHÍ CHẤT LƯỢNG (áp dụng ch
 
 SAU KHI SỬA: tự kiểm tra lại TỪNG câu một lần nữa — xác nhận đáp án được đánh dấu isCorrect:true là chính xác và ba phương án còn lại đều sai.`
 
+// Bo quy tac RIENG cho Ollama (model 7B) khi SINH cau - ngan gon, cu the, co vi
+// du sai/dung tai cho. Checklist cua Claude (o tren) qua dai/truu tuong voi 7B.
+export const OLLAMA_QUIZ_RULES = `Bạn là trợ lý soạn câu hỏi trắc nghiệm ôn tập cho sinh viên Y khoa Việt Nam.
+Chỉ trả về JSON đúng schema được yêu cầu. Không viết gì ngoài JSON. Viết hoàn toàn bằng tiếng Việt.
+Mỗi câu gồm: "question" (chuỗi), "options" (mảng đúng 4 chuỗi), "correct" (số 0-3, chỉ vị trí phương án đúng trong "options"), "explanation" (chuỗi).
+
+QUY TẮC BẮT BUỘC — tự kiểm lại từng câu trước khi trả về:
+
+1. NGUỒN. Chỉ dùng thông tin có trong phần TÀI LIỆU NGUỒN người dùng cung cấp. Không thêm kiến thức bên ngoài. Nếu tài liệu không đủ để tạo đủ số câu yêu cầu, tạo ít câu hơn — tuyệt đối không bịa.
+
+2. ĐÁP ÁN. Mỗi câu có đúng 4 phương án khác nhau hoàn toàn; "correct" trỏ đúng phương án đúng. Ba phương án còn lại phải thực sự sai trong bối cảnh câu hỏi.
+
+3. CÂN BẰNG ĐỘ DÀI. 4 phương án phải dài xấp xỉ nhau và cùng kiểu diễn đạt. KHÔNG để phương án đúng dài hơn, chi tiết hơn hay "đầy đủ hơn" ba phương án kia — đó là lỗi lộ đáp án.
+   Sai: đúng = "Ức chế men chuyển, chẹn beta, lợi tiểu và kháng aldosterone"; sai = "Chỉ dùng lợi tiểu"
+   Đúng: cả 4 phương án đều nêu một nhóm thuốc cụ thể, độ dài tương đương.
+
+4. PHƯƠNG ÁN NHIỄU. Ba phương án sai phải hợp lý, là nhầm lẫn thường gặp của sinh viên. KHÔNG dùng phương án vô lý, hiển nhiên sai hoặc lạc đề.
+
+5. CẤM các dạng phương án: mở đầu bằng "Chỉ...", "Tất cả các ý trên", "Không ý nào đúng", "A và B đúng", "Cả A, B và C".
+
+6. CẤM TRÙNG LẶP. Không nhắc lại nguyên văn lời câu hỏi trong phương án. Không để hai phương án trùng hoặc gần trùng nghĩa. Các câu trong bộ không hỏi trùng nội dung — mỗi câu kiểm tra một ý kiến thức riêng.
+
+7. VỊ TRÍ ĐÁP ÁN ĐÚNG. Rải đều giữa 4 vị trí trong cả bộ câu hỏi; không đặt đáp án đúng luôn ở cùng một vị trí.
+
+8. CÂU HỎI. Tự nhiên, rõ ràng, chỉ một cách hiểu. Không đánh đố, không chơi chữ, không gài manh mối dẫn thẳng tới đáp án.
+
+9. GIẢI THÍCH. MỘT câu ngắn (tối đa 20 từ): nói thẳng vì sao đáp án đúng.`
+
+// Prompt he thong cho luot Ollama SINH cau = quy tac + khoi few-shot (neu co).
+export function buildOllamaQuizSystemPrompt(fewShotBlock?: string): string {
+  return `${OLLAMA_QUIZ_RULES}${fewShotBlock ? `\n\n${fewShotBlock}` : ''}`
+}
+
 interface Piece {
   label: string
   text: string
 }
 
-const MAX_SOURCE_CHARS = 90_000
+// Luot ra soat khong can toan bo nguon; cat vua du de doi chieu kien thuc.
+// Ollama gioi han num_ctx nen cat manh hon nhieu.
+const MAX_SOURCE_BY_PROVIDER: Record<AiProvider, number> = {
+  claude: 45_000,
+  ollama: 10_000
+}
 
-function sourceBlock(pieces: Piece[]): string {
+function sourceBlock(pieces: Piece[], provider: AiProvider = 'claude'): string {
+  const max = MAX_SOURCE_BY_PROVIDER[provider]
   let combined = pieces.map((p) => `===== ${p.label} =====\n${p.text}`).join('\n\n')
-  if (combined.length > MAX_SOURCE_CHARS) combined = combined.slice(0, MAX_SOURCE_CHARS)
+  if (combined.length > max) combined = combined.slice(0, max)
   return combined
 }
 
@@ -49,6 +90,7 @@ export function buildRefinePrompt(params: {
   contentPieces: Piece[]
   questions: { questionText: string; options: { text: string; isCorrect: boolean }[]; explanation: string | null }[]
   existingQuestions?: string[]
+  provider?: AiProvider
 }): string {
   const avoid =
     params.existingQuestions && params.existingQuestions.length > 0
@@ -71,7 +113,7 @@ BỘ CÂU HỎI NHÁP:
 ${questionsJson(params.questions)}
 
 NỘI DUNG NGUỒN:
-${sourceBlock(params.contentPieces)}`
+${sourceBlock(params.contentPieces, params.provider)}`
 }
 
 // Luot ra soat cho cau DA LUU trong ngan hang - PHAI tra ve dung so cau, dung
@@ -79,6 +121,7 @@ ${sourceBlock(params.contentPieces)}`
 export function buildReviewPrompt(params: {
   contentPieces: Piece[]
   questions: { questionText: string; options: { text: string; isCorrect: boolean }[]; explanation: string | null }[]
+  provider?: AiProvider
 }): string {
   return `Bạn là chuyên gia thẩm định câu hỏi trắc nghiệm y khoa.
 
@@ -97,5 +140,5 @@ CÁC CÂU HỎI HIỆN CÓ:
 ${questionsJson(params.questions)}
 
 NỘI DUNG NGUỒN:
-${sourceBlock(params.contentPieces)}`
+${sourceBlock(params.contentPieces, params.provider)}`
 }

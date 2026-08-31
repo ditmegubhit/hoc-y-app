@@ -2,6 +2,7 @@ import * as questionBankRepo from '../../db/repositories/questionBank.repo'
 import * as lessonsRepo from '../../db/repositories/lessons.repo'
 import { collectLessonContentPieces } from './lessonContent'
 import { reviewExistingQuestions } from './refineQuizQuestions'
+import type { AiProvider } from '../../../shared/types/ai'
 import type {
   Question,
   QuestionDraftContent,
@@ -34,7 +35,8 @@ export interface ReviewQuestionsResult {
 }
 
 export async function reviewQuestionBankEntries(
-  questionIds: string[]
+  questionIds: string[],
+  provider: AiProvider = 'claude'
 ): Promise<ReviewQuestionsResult> {
   const questions = questionIds
     .map((id) => questionBankRepo.getQuestion(id))
@@ -56,7 +58,8 @@ export async function reviewQuestionBankEntries(
 
   const res = await reviewExistingQuestions({
     contentPieces: pieces,
-    questions: questions.map(toContent)
+    questions: questions.map(toContent),
+    provider
   })
   if (!res.ok || !res.improved) {
     return { ok: false, errorMessage: res.errorMessage ?? 'Rà soát thất bại.' }

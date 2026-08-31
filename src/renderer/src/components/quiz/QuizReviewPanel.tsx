@@ -1,6 +1,16 @@
 import { useState } from 'react'
 import type { ReviewedQuestion } from '@shared/types/question'
-import { useUpdateQuestion, type QuizScope } from '@renderer/queries/quiz'
+import {
+  recordLearningExamples,
+  useUpdateQuestion,
+  type QuizScope
+} from '@renderer/queries/quiz'
+
+function scopeIds(scope: QuizScope): { lessonId: string | null; topicId: string | null } {
+  return scope.type === 'lesson'
+    ? { lessonId: scope.lessonId, topicId: null }
+    : { lessonId: null, topicId: scope.topicId }
+}
 
 interface QuizReviewPanelProps {
   results: ReviewedQuestion[]
@@ -90,6 +100,10 @@ function QuizReviewPanel({ results, scope, onClose }: QuizReviewPanelProps): Rea
       options: item.improved.options,
       explanation: item.improved.explanation
     })
+    // Cap "cau chua dat -> cau Claude sua" -> vi du few-shot cho Ollama hoc dan.
+    recordLearningExamples([
+      { kind: 'claude_fix', before: item.original, after: item.improved, ...scopeIds(scope) }
+    ])
     setApplied((s) => new Set(s).add(item.id))
   }
 

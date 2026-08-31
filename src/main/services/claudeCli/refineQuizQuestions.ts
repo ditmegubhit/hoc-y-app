@@ -1,8 +1,9 @@
 import { z } from 'zod'
-import { runClaudeHeadless } from './claudeCliClient'
+import { runAiJson } from '../ai/aiClient'
 import { quizFromLessonJsonSchema } from './promptTemplates/quizFromLesson.prompt'
 import { buildRefinePrompt, buildReviewPrompt } from './promptTemplates/quizQuality.prompt'
 import type { ContentPiece } from './lessonContent'
+import type { AiProvider } from '../../../shared/types/ai'
 import type { DraftQuestion, QuestionOption } from '../../../shared/types/question'
 
 const outSchema = z.object({
@@ -47,19 +48,23 @@ export async function refineGeneratedQuestions(params: {
   contentPieces: ContentPiece[]
   questions: PlainQuestion[]
   existingQuestionTexts?: string[]
+  provider?: AiProvider
 }): Promise<DraftQuestion[]> {
   if (params.questions.length === 0) return []
 
+  const provider: AiProvider = params.provider ?? 'claude'
   try {
-    const result = await runClaudeHeadless({
+    const result = await runAiJson({
+      provider,
       prompt: buildRefinePrompt({
         subjectTitle: params.subjectTitle,
         contentPieces: params.contentPieces,
         questions: params.questions,
-        existingQuestions: params.existingQuestionTexts
+        existingQuestions: params.existingQuestionTexts,
+        provider
       }),
       jsonSchema: quizFromLessonJsonSchema,
-      timeoutMs: 180_000
+      timeoutMs: provider === 'ollama' ? 600_000 : 180_000
     })
     if (!result.ok) return params.questions
     const parsed = outSchema.safeParse(result.structuredOutput)
@@ -78,41 +83,83 @@ export interface ReviewExistingResult {
   errorMessage?: string
 }
 
+// Ra soat theo lo nho: 1 loi goi AI xu ly ca chuc cau + toan bo nguon vua cham
+// (co the qua thoi gian cho) vua de sai so luong. Chia lo giup moi loi goi nho,
+// nhanh, de khop; lo nao hong thi giu nguyen cac cau trong lo do.
+const REVIEW_CHUNK_BY_PROVIDER: Record<AiProvider, number> = {
+  claude: 6,
+  ollama: 3
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
+  return out
+}
+
+async function reviewOneChunk(
+  questions: PlainQuestion[],
+  contentPieces: ContentPiece[],
+  provider: AiProvider
+): Promise<{ improved: PlainQuestion[] } | { error: string }> {
+  try {
+    const result = await runAiJson({
+      provider,
+      prompt: buildReviewPrompt({ contentPieces, questions, provider }),
+      jsonSchema: quizFromLessonJsonSchema,
+      timeoutMs: provider === 'ollama' ? 300_000 : 240_000
+    })
+    if (!result.ok) return { error: result.errorMessage ?? 'Không gọi được AI.' }
+
+    const parsed = outSchema.safeParse(result.structuredOutput)
+    if (!parsed.success) return { error: 'AI trả về dữ liệu không đúng định dạng.' }
+    if (parsed.data.questions.length !== questions.length) {
+      return { error: 'AI trả về sai số câu.' }
+    }
+    const improved = parsed.data.questions.map(toDraft)
+    if (!improved.every(hasExactlyOneCorrect)) {
+      return { error: 'AI trả về câu không có đúng một đáp án đúng.' }
+    }
+    return { improved }
+  } catch {
+    return { error: 'Lỗi khi gọi AI.' }
+  }
+}
+
 /**
  * Luot "Ra soat & cai tien" cho cau DA LUU. PHAI khop so luong + thu tu de map
- * lai theo id goc.
+ * lai theo id goc. Chia lo; lo hong -> giu nguyen cau lo do (khong lam hong ca me).
  */
 export async function reviewExistingQuestions(params: {
   contentPieces: ContentPiece[]
   questions: PlainQuestion[]
+  provider?: AiProvider
 }): Promise<ReviewExistingResult> {
   if (params.questions.length === 0) return { ok: true, improved: [] }
 
-  const result = await runClaudeHeadless({
-    prompt: buildReviewPrompt({
-      contentPieces: params.contentPieces,
-      questions: params.questions
-    }),
-    jsonSchema: quizFromLessonJsonSchema,
-    timeoutMs: 240_000
-  })
-  if (!result.ok) {
-    return { ok: false, errorMessage: result.errorMessage ?? 'Không gọi được Claude.' }
-  }
-  const parsed = outSchema.safeParse(result.structuredOutput)
-  if (!parsed.success) {
-    return { ok: false, errorMessage: 'Claude trả về dữ liệu không đúng định dạng.' }
-  }
-  if (parsed.data.questions.length !== params.questions.length) {
-    return {
-      ok: false,
-      errorMessage: `AI trả về ${parsed.data.questions.length} câu (cần đúng ${params.questions.length}). Thử lại, hoặc rà soát ít câu hơn một lần.`
+  const provider: AiProvider = params.provider ?? 'claude'
+  const groups = chunk(params.questions, REVIEW_CHUNK_BY_PROVIDER[provider])
+
+  const improved: PlainQuestion[] = []
+  let okCount = 0
+  let lastError = ''
+
+  for (const group of groups) {
+    const res = await reviewOneChunk(group, params.contentPieces, provider)
+    if ('improved' in res) {
+      improved.push(...res.improved)
+      okCount += 1
+    } else {
+      improved.push(...group) // giu nguyen lo nay
+      lastError = res.error
     }
   }
 
-  const improved = parsed.data.questions.map(toDraft)
-  if (!improved.every(hasExactlyOneCorrect)) {
-    return { ok: false, errorMessage: 'AI trả về câu không có đúng một đáp án đúng. Thử lại.' }
+  if (okCount === 0) {
+    return {
+      ok: false,
+      errorMessage: `Rà soát thất bại: ${lastError || 'không gọi được AI'}. Thử lại nhé.`
+    }
   }
   return { ok: true, improved }
 }

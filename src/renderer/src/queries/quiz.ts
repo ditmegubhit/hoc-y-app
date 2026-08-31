@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { UpdateQuestionInput } from '@shared/types/question'
+import type { AiProvider, AiSettings } from '@shared/types/ai'
+import type { LearningExampleInput, UpdateQuestionInput } from '@shared/types/question'
 import type { CreateQuizInput, SubmitAttemptInput } from '@shared/types/quiz'
 import { useQuizGenerationStore } from '@renderer/stores/quizGenerationStore'
 import { useRecentQuestionsStore } from '@renderer/stores/recentQuestionsStore'
@@ -14,6 +15,8 @@ export function quizScopeKey(scope: QuizScope): string {
 
 export const quizKeys = {
   aiAvailability: ['ai', 'availability'] as const,
+  ollamaStatus: ['ai', 'ollamaStatus'] as const,
+  aiSettings: ['ai', 'settings'] as const,
   playableLesson: (lessonId: string) => ['quiz', 'playable', 'lesson', lessonId] as const,
   playableTopic: (topicId: string, lessonIds: string[]) =>
     ['quiz', 'playable', 'topic', topicId, [...lessonIds].sort()] as const,
@@ -40,6 +43,32 @@ export function useAiAvailability() {
   return useQuery({
     queryKey: quizKeys.aiAvailability,
     queryFn: () => window.api.ai.checkAvailability()
+  })
+}
+
+export function useOllamaStatus() {
+  return useQuery({
+    queryKey: quizKeys.ollamaStatus,
+    queryFn: () => window.api.ai.checkOllama(),
+    staleTime: 30_000
+  })
+}
+
+export function useAiSettings() {
+  return useQuery({
+    queryKey: quizKeys.aiSettings,
+    queryFn: () => window.api.ai.getAiSettings()
+  })
+}
+
+export function useSetAiSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: Partial<AiSettings>) => window.api.ai.setAiSettings(patch),
+    onSuccess: (settings) => {
+      qc.setQueryData(quizKeys.aiSettings, settings)
+      qc.invalidateQueries({ queryKey: quizKeys.ollamaStatus })
+    }
   })
 }
 
@@ -76,7 +105,7 @@ export function useQuizGeneration(scope: QuizScope) {
   const phase = useQuizGenerationStore((s) => s.phase[key] ?? 'idle')
   const outcome = useQuizGenerationStore((s) => s.outcome[key] ?? null)
 
-  const generate = (numQuestions: number): void => {
+  const generate = (numQuestions: number, provider: AiProvider): void => {
     const captured = scope // "chup" pham vi ngay luc bam
     const genStore = useQuizGenerationStore.getState()
     genStore.setPhase(key, 'generating')
@@ -89,12 +118,14 @@ export function useQuizGeneration(scope: QuizScope) {
           captured.type === 'lesson'
             ? await window.api.ai.generateQuizFromLesson({
                 lessonId: captured.lessonId,
-                numQuestions
+                numQuestions,
+                provider
               })
             : await window.api.ai.generateQuizFromLessons({
                 lessonIds: captured.lessonIds,
                 numQuestions,
-                topicId: captured.topicId
+                topicId: captured.topicId,
+                provider
               })
 
         if (!gen.ok || !gen.questions || gen.questions.length === 0) {
@@ -111,8 +142,8 @@ export function useQuizGeneration(scope: QuizScope) {
         genStore.setPhase(key, 'saving')
         const saved = await window.api.ai.saveDraftQuestions(
           captured.type === 'lesson'
-            ? { questions: gen.questions, lessonId: captured.lessonId }
-            : { questions: gen.questions, topicId: captured.topicId }
+            ? { questions: gen.questions, lessonId: captured.lessonId, provider }
+            : { questions: gen.questions, topicId: captured.topicId, provider }
         )
 
         useRecentQuestionsStore.getState().markGenerated(saved.map((q) => q.id))
@@ -130,7 +161,7 @@ export function useQuizGeneration(scope: QuizScope) {
           savedCount: 0,
           duplicates: 0,
           truncated: false,
-          error: 'Không gọi được Claude để tạo câu hỏi. Thử lại nhé.'
+          error: 'Không gọi được AI để tạo câu hỏi. Thử lại nhé.'
         })
       }
     })()
@@ -157,8 +188,16 @@ export function useUpdateQuestion(_scope: QuizScope) {
 
 export function useReviewQuestions() {
   return useMutation({
-    mutationFn: (questionIds: string[]) => window.api.ai.reviewQuestions({ questionIds })
+    mutationFn: (input: { questionIds: string[]; provider: AiProvider }) =>
+      window.api.ai.reviewQuestions(input)
   })
+}
+
+// Ghi cap "cau chua dat -> cau da sua" cho Ollama hoc dan. Loi ghi khong lam
+// hong luong chinh -> nuot loi.
+export function recordLearningExamples(examples: LearningExampleInput[]): void {
+  if (examples.length === 0) return
+  void window.api.ai.recordLearningExamples(examples).catch(() => {})
 }
 
 // ---------- Lam bai ----------

@@ -3,6 +3,7 @@ import { getDb } from '../index'
 import type {
   Question,
   QuestionSource,
+  QuestionGenerator,
   QuestionStatus,
   DraftQuestion,
   UpdateQuestionInput
@@ -14,6 +15,7 @@ interface QuestionRow {
   options_json: string
   explanation: string | null
   source: string
+  generator: string | null
   lesson_id: string | null
   exam_file_id: string | null
   topic_id: string | null
@@ -29,6 +31,7 @@ function mapQuestion(row: QuestionRow): Question {
     options: JSON.parse(row.options_json),
     explanation: row.explanation,
     source: row.source as QuestionSource,
+    generator: (row.generator as QuestionGenerator) ?? null,
     lessonId: row.lesson_id,
     examFileId: row.exam_file_id,
     topicId: row.topic_id,
@@ -48,13 +51,14 @@ export function getQuestion(id: string): Question | null {
 export function saveDraftQuestions(params: {
   questions: DraftQuestion[]
   source: QuestionSource
+  generator?: QuestionGenerator
   lessonId: string | null
   topicId: string | null
 }): Question[] {
   const db = getDb()
   const insert = db.prepare(
-    `INSERT INTO question_bank (id, question_text, options_json, explanation, source, lesson_id, topic_id, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')`
+    `INSERT INTO question_bank (id, question_text, options_json, explanation, source, generator, lesson_id, topic_id, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
   )
   const ids: string[] = []
   const tx = db.transaction(() => {
@@ -66,6 +70,7 @@ export function saveDraftQuestions(params: {
         JSON.stringify(q.options),
         q.explanation,
         params.source,
+        params.generator ?? null,
         params.lessonId,
         params.topicId
       )
@@ -80,13 +85,47 @@ export function saveDraftQuestionsFromLesson(params: {
   lessonId: string
   topicId: string
   questions: DraftQuestion[]
+  generator?: QuestionGenerator
 }): Question[] {
   return saveDraftQuestions({
     questions: params.questions,
     source: 'ai_generated_from_lesson',
+    generator: params.generator,
     lessonId: params.lessonId,
     topicId: params.topicId
   })
+}
+
+// Cau do Claude sinh, trong pham vi (de lam vi du few-shot cho Ollama).
+export function listClaudeGeneratedByLessonIds(ids: string[], limit: number): Question[] {
+  if (ids.length === 0) return []
+  const placeholders = ids.map(() => '?').join(',')
+  const rows = getDb()
+    .prepare(
+      `SELECT * FROM question_bank
+       WHERE generator = 'claude' AND lesson_id IN (${placeholders})
+       ORDER BY created_at DESC LIMIT ?`
+    )
+    .all(...ids, limit) as QuestionRow[]
+  return rows.map(mapQuestion)
+}
+
+export function listClaudeGeneratedUnderTopic(topicId: string, limit: number): Question[] {
+  const rows = getDb()
+    .prepare(
+      `WITH RECURSIVE sub(id) AS (
+         SELECT ?
+         UNION ALL
+         SELECT t.id FROM topics t JOIN sub ON t.parent_id = sub.id
+       )
+       SELECT DISTINCT qb.* FROM question_bank qb
+       WHERE qb.generator = 'claude'
+         AND (qb.topic_id IN (SELECT id FROM sub)
+              OR qb.lesson_id IN (SELECT id FROM lessons WHERE topic_id IN (SELECT id FROM sub)))
+       ORDER BY qb.created_at DESC LIMIT ?`
+    )
+    .all(topicId, limit) as QuestionRow[]
+  return rows.map(mapQuestion)
 }
 
 export function listQuestionsByLesson(lessonId: string): Question[] {

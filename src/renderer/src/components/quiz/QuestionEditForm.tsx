@@ -1,6 +1,20 @@
 import { useState } from 'react'
-import type { Question, QuestionOption } from '@shared/types/question'
-import { useUpdateQuestion, type QuizScope } from '@renderer/queries/quiz'
+import type { Question, QuestionDraftContent, QuestionOption } from '@shared/types/question'
+import {
+  recordLearningExamples,
+  useUpdateQuestion,
+  type QuizScope
+} from '@renderer/queries/quiz'
+
+function contentChanged(a: QuestionDraftContent, b: QuestionDraftContent): boolean {
+  const norm = (s: string | null): string => (s ?? '').replace(/\s+/g, ' ').trim().toLowerCase()
+  if (norm(a.questionText) !== norm(b.questionText)) return true
+  if (norm(a.explanation) !== norm(b.explanation)) return true
+  if (a.options.length !== b.options.length) return true
+  return a.options.some(
+    (o, i) => norm(o.text) !== norm(b.options[i].text) || o.isCorrect !== b.options[i].isCorrect
+  )
+}
 
 interface QuestionEditFormProps {
   question: Question
@@ -36,14 +50,35 @@ function QuestionEditForm({ question, scope, onDone }: QuestionEditFormProps): R
       return
     }
     setError(null)
+    const after: QuestionDraftContent = {
+      questionText: questionText.trim(),
+      options: options.map((o) => ({ ...o, text: o.text.trim() })),
+      explanation: explanation.trim() ? explanation.trim() : null
+    }
     updateMutation.mutate(
+      { id: question.id, ...after },
       {
-        id: question.id,
-        questionText: questionText.trim(),
-        options: options.map((o) => ({ ...o, text: o.text.trim() })),
-        explanation: explanation.trim() ? explanation.trim() : null
-      },
-      { onSuccess: () => onDone() }
+        onSuccess: () => {
+          // User sua tay 1 cau do Ollama tao -> luu cap lam vi du few-shot.
+          const before: QuestionDraftContent = {
+            questionText: question.questionText,
+            options: question.options,
+            explanation: question.explanation
+          }
+          if (question.generator === 'ollama' && contentChanged(before, after)) {
+            recordLearningExamples([
+              {
+                kind: 'ollama_fixed',
+                before,
+                after,
+                lessonId: scope.type === 'lesson' ? scope.lessonId : null,
+                topicId: scope.type === 'topic' ? scope.topicId : null
+              }
+            ])
+          }
+          onDone()
+        }
+      }
     )
   }
 

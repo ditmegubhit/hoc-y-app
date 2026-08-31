@@ -1196,6 +1196,27 @@ input[type='number']:focus {
   width: 60px;
 }
 
+.quiz-ai-engine-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.5rem 0;
+}
+
+.quiz-ai-engine-buttons button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.quiz-ai-cost {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 0.35rem;
+}
+
 .quiz-ai-warning {
   color: var(--warning-text);
   background: var(--warning-bg);
@@ -1855,6 +1876,50 @@ input[type='number']:focus {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.settings-ai-row {
+  margin: 0.6rem 0 0.9rem;
+}
+
+.settings-ai-engine {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.settings-ai-status {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0;
+}
+
+.settings-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0;
+}
+
+.settings-field select {
+  padding: 0.3rem 0.4rem;
+}
+
+.settings-field--check {
+  align-items: flex-start;
+  max-width: 42rem;
+  line-height: 1.4;
+}
+
+.btn-tiny {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 /* ---------- Exam bank ---------- */

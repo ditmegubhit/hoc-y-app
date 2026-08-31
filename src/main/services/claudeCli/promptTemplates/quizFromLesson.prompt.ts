@@ -29,9 +29,51 @@ export const quizFromLessonJsonSchema = {
   required: ['questions']
 } as const
 
-const MAX_CONTENT_CHARS = 120_000
+// Schema GON cho Ollama: options la mang 4 chuoi + `correct` la chi so 0..3.
+// It ky tu "khung" hon nhieu so voi mang object {text,isCorrect} -> giam ~25%
+// token dau ra (sinh chu tren iGPU la nut co chai). Map lai ve {id,text,isCorrect}
+// o tang goi.
+export const ollamaQuizJsonSchema = {
+  type: 'object',
+  properties: {
+    questions: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          question: { type: 'string' },
+          options: {
+            type: 'array',
+            minItems: 4,
+            maxItems: 4,
+            items: { type: 'string' }
+          },
+          correct: { type: 'integer', minimum: 0, maximum: 3 },
+          explanation: { type: 'string' }
+        },
+        required: ['question', 'options', 'correct']
+      }
+    }
+  },
+  required: ['questions']
+} as const
+
+import type { AiProvider } from '../../../../shared/types/ai'
+
+// Claude nuot ca tram nghin ky tu; Ollama chay tren may bi gioi han num_ctx +
+// CPU cham nen cat manh hon.
+const MAX_CONTENT_CHARS_BY_PROVIDER: Record<AiProvider, number> = {
+  claude: 120_000,
+  // Ollama num_ctx 8k, chua system prompt + few-shot + cho phan sinh ~3k token
+  // -> gioi han nguon o muc vua phai (nguon dai hon se bi cat, co canh bao).
+  ollama: 11_000
+}
 // Gioi han so cau da co dua vao prompt (tranh phinh token khi ngan hang lon).
-const MAX_EXISTING_IN_PROMPT = 120
+const MAX_EXISTING_BY_PROVIDER: Record<AiProvider, number> = {
+  claude: 120,
+  // Danh sach "dung lap" lam phinh prompt Ollama; dedup van chay sau khi sinh.
+  ollama: 8
+}
 
 interface Piece {
   label: string
@@ -64,9 +106,14 @@ export function buildQuizFromLessonPrompt(params: {
   contentPieces: Piece[]
   numQuestions: number
   existingQuestions?: string[]
+  provider?: AiProvider
+  // Ghi de ngan sach ky tu nguon (Ollama: khac nhau tuy che do "hoc").
+  maxContentChars?: number
 }): { prompt: string; truncated: boolean } {
+  const provider: AiProvider = params.provider ?? 'claude'
   const pieces = params.contentPieces
-  const alloc = allocateBudget(pieces, MAX_CONTENT_CHARS)
+  const budget = params.maxContentChars ?? MAX_CONTENT_CHARS_BY_PROVIDER[provider]
+  const alloc = allocateBudget(pieces, budget)
   const truncated = alloc.some((a) => a.truncated)
 
   const sourcesList = pieces.map((p, i) => `${i + 1}. ${p.label}`).join('\n')
@@ -79,10 +126,12 @@ export function buildQuizFromLessonPrompt(params: {
     )
     .join('\n\n')
 
-  const existing = (params.existingQuestions ?? []).slice(0, MAX_EXISTING_IN_PROMPT)
+  const existing = (params.existingQuestions ?? []).slice(0, MAX_EXISTING_BY_PROVIDER[provider])
+  // Khoi "dung lap" thay doi moi lan soan -> dat o CUOI prompt de phan noi dung
+  // nguon (on dinh theo bai hoc) duoc cache prompt tai su dung o lan soan sau.
   const avoidBlock =
     existing.length > 0
-      ? `\n- KHÔNG lặp lại hoặc chỉ diễn đạt lại theo cách khác các câu hỏi đã có sau đây (soạn câu MỚI, khía cạnh khác):\n${existing.map((q) => `  · ${q}`).join('\n')}`
+      ? `\n\nKHÔNG lặp lại hoặc chỉ diễn đạt lại theo cách khác các câu đã có sau đây — soạn câu MỚI, khía cạnh khác:\n${existing.map((q) => `  · ${q}`).join('\n')}`
       : ''
 
   const prompt = `Bạn là trợ lý soạn câu hỏi ôn tập cho sinh viên Y khoa.
@@ -97,10 +146,10 @@ Yêu cầu:
 - Mỗi câu có đúng 4 lựa chọn, chỉ 1 đáp án đúng (isCorrect: true), 3 đáp án nhiễu hợp lý về mặt y khoa.
 - Câu hỏi và đáp án bằng tiếng Việt.
 - Nếu tài liệu không đủ để tạo đủ số câu yêu cầu, chỉ tạo số câu tương ứng với nội dung có thật.
-- Không thêm giải thích ngoài JSON.${avoidBlock}
+- Không thêm giải thích ngoài JSON.
 
 NỘI DUNG CÁC NGUỒN:
-${body}`
+${body}${avoidBlock}`
 
   return { prompt, truncated }
 }

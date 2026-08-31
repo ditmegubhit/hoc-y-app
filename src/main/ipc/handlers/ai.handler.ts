@@ -5,18 +5,32 @@ import { checkClaudeCliAvailability } from '../../services/claudeCli/checkAvaila
 import { generateQuizFromLesson } from '../../services/claudeCli/generateQuizFromLesson'
 import { generateQuizFromLessons } from '../../services/claudeCli/generateQuizFromLessons'
 import { reviewQuestionBankEntries } from '../../services/claudeCli/reviewQuestions'
+import { checkOllama } from '../../services/ollama/ollamaClient'
 import * as questionBankRepo from '../../db/repositories/questionBank.repo'
+import * as quizLearningRepo from '../../db/repositories/quizLearning.repo'
 import * as lessonsRepo from '../../db/repositories/lessons.repo'
+import * as appSettingsRepo from '../../db/repositories/appSettings.repo'
+
+const providerSchema = z.enum(['claude', 'ollama']).default('claude')
 
 const generateSchema = z.object({
   lessonId: z.string(),
-  numQuestions: z.number().int().min(1).max(20)
+  numQuestions: z.number().int().min(1).max(20),
+  provider: providerSchema
 })
 
 const generateManySchema = z.object({
   lessonIds: z.array(z.string()).min(1),
   numQuestions: z.number().int().min(1).max(50),
-  topicId: z.string().nullable().optional()
+  topicId: z.string().nullable().optional(),
+  provider: providerSchema
+})
+
+const aiSettingsSchema = z.object({
+  ollamaModel: z.string().min(1).optional(),
+  ollamaPath: z.string().optional(),
+  ollamaAutoRefine: z.boolean().optional(),
+  ollamaUseLearnedExamples: z.boolean().optional()
 })
 
 const optionSchema = z.object({
@@ -34,7 +48,28 @@ const saveDraftSchema = z.object({
     })
   ),
   lessonId: z.string().nullable().optional(),
-  topicId: z.string().nullable().optional()
+  topicId: z.string().nullable().optional(),
+  provider: providerSchema
+})
+
+const draftContentSchema = z.object({
+  questionText: z.string(),
+  options: z.array(optionSchema),
+  explanation: z.string().nullable()
+})
+
+const recordLearningSchema = z.object({
+  examples: z
+    .array(
+      z.object({
+        kind: z.enum(['claude_fix', 'ollama_fixed']),
+        before: draftContentSchema,
+        after: draftContentSchema,
+        lessonId: z.string().nullable(),
+        topicId: z.string().nullable()
+      })
+    )
+    .min(1)
 })
 
 const idSchema = z.object({ id: z.string() })
@@ -56,6 +91,15 @@ const updateQuestionSchema = z.object({
 
 export function registerAiHandlers(): void {
   ipcMain.handle(IpcChannels.ai.checkAvailability, () => checkClaudeCliAvailability())
+
+  ipcMain.handle(IpcChannels.ai.checkOllama, () => checkOllama())
+
+  ipcMain.handle(IpcChannels.ai.getAiSettings, () => appSettingsRepo.getAiSettings())
+
+  ipcMain.handle(IpcChannels.ai.setAiSettings, (_event, payload) => {
+    const patch = aiSettingsSchema.parse(payload)
+    return appSettingsRepo.setAiSettings(patch)
+  })
 
   ipcMain.handle(IpcChannels.ai.generateQuizFromLesson, (_event, payload) => {
     const input = generateSchema.parse(payload)
@@ -82,7 +126,9 @@ export function registerAiHandlers(): void {
       lessonIds: input.lessonIds,
       numQuestions: input.numQuestions,
       subjectTitle,
-      existingQuestionTexts
+      existingQuestionTexts,
+      provider: input.provider,
+      topicId: input.topicId ?? null
     })
   })
 
@@ -105,9 +151,15 @@ export function registerAiHandlers(): void {
     return questionBankRepo.saveDraftQuestions({
       questions: input.questions,
       source: 'ai_generated_from_lesson',
+      generator: input.provider,
       lessonId,
       topicId
     })
+  })
+
+  ipcMain.handle(IpcChannels.ai.recordLearningExamples, (_event, payload) => {
+    const { examples } = recordLearningSchema.parse(payload)
+    quizLearningRepo.recordExamples(examples)
   })
 
   ipcMain.handle(IpcChannels.ai.listQuestionsByLesson, (_event, payload) => {
@@ -136,8 +188,10 @@ export function registerAiHandlers(): void {
   })
 
   ipcMain.handle(IpcChannels.ai.reviewQuestions, async (_event, payload) => {
-    const { questionIds } = z.object({ questionIds: z.array(z.string()).min(1) }).parse(payload)
-    const res = await reviewQuestionBankEntries(questionIds)
+    const { questionIds, provider } = z
+      .object({ questionIds: z.array(z.string()).min(1), provider: providerSchema })
+      .parse(payload)
+    const res = await reviewQuestionBankEntries(questionIds, provider)
     if (!res.ok || !res.reviewed) throw new Error(res.errorMessage ?? 'Rà soát thất bại.')
     return res.reviewed
   })

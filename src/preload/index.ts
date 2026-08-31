@@ -47,6 +47,9 @@ const api: AppApi = {
   },
   ai: {
     checkAvailability: () => ipcRenderer.invoke(IpcChannels.ai.checkAvailability),
+    checkOllama: () => ipcRenderer.invoke(IpcChannels.ai.checkOllama),
+    getAiSettings: () => ipcRenderer.invoke(IpcChannels.ai.getAiSettings),
+    setAiSettings: (patch) => ipcRenderer.invoke(IpcChannels.ai.setAiSettings, patch),
     generateQuizFromLesson: (input) =>
       ipcRenderer.invoke(IpcChannels.ai.generateQuizFromLesson, input),
     generateQuizFromLessons: (input) =>
@@ -62,6 +65,8 @@ const api: AppApi = {
       ipcRenderer.invoke(IpcChannels.ai.listQuestionsUnderTopic, { topicId }),
     updateQuestion: (input) => ipcRenderer.invoke(IpcChannels.ai.updateQuestion, input),
     reviewQuestions: (input) => ipcRenderer.invoke(IpcChannels.ai.reviewQuestions, input),
+    recordLearningExamples: (examples) =>
+      ipcRenderer.invoke(IpcChannels.ai.recordLearningExamples, { examples }),
     deleteQuestion: (id) => ipcRenderer.invoke(IpcChannels.ai.deleteQuestion, { id })
   },
   quiz: {

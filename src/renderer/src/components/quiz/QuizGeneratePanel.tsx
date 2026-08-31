@@ -1,7 +1,13 @@
 import { useState } from 'react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Cpu, Cloud } from 'lucide-react'
 import { useAttachments } from '@renderer/queries/attachments'
-import { useAiAvailability, useQuizGeneration, type QuizScope } from '@renderer/queries/quiz'
+import {
+  useAiAvailability,
+  useOllamaStatus,
+  useQuizGeneration,
+  type QuizScope
+} from '@renderer/queries/quiz'
+import type { AiProvider } from '@shared/types/ai'
 
 interface QuizGeneratePanelProps {
   scope: QuizScope
@@ -25,50 +31,57 @@ function SourceHint({ lessonId }: { lessonId: string }): React.JSX.Element | nul
   )
 }
 
+function ollamaHint(status: ReturnType<typeof useOllamaStatus>['data']): string | null {
+  if (!status) return null
+  switch (status.status) {
+    case 'ready':
+      return null
+    case 'not_installed':
+      return 'Chưa cài Ollama trên máy. Cài Ollama rồi tải model qwen2.5:7b-instruct.'
+    case 'not_running':
+      return 'Không khởi động được Ollama. Mở app Ollama một lần rồi thử lại.'
+    case 'no_model':
+      return 'Ollama đã chạy nhưng chưa có model nào. Chạy: ollama pull qwen2.5:7b-instruct'
+    case 'error':
+      return `Lỗi kiểm tra Ollama: ${status.message}`
+  }
+}
+
 function QuizGeneratePanel({ scope }: QuizGeneratePanelProps): React.JSX.Element {
   const [numQuestions, setNumQuestions] = useState(5)
+  const [runningProvider, setRunningProvider] = useState<AiProvider | null>(null)
 
   const availabilityQuery = useAiAvailability()
+  const ollamaQuery = useOllamaStatus()
   const { phase, outcome, generate } = useQuizGeneration(scope)
 
   const cliStatus = availabilityQuery.data?.status
+  const ollamaReady = ollamaQuery.data?.status === 'ready'
+  const claudeReady = cliStatus === 'ready'
   const topicWithoutLessons = scope.type === 'topic' && scope.lessonIds.length === 0
   const maxQuestions = scope.type === 'lesson' ? 20 : 50
   const busy = phase !== 'idle'
 
-  const handleGenerate = (): void => {
+  const handleGenerate = (provider: AiProvider): void => {
     const clamped = Math.max(1, Math.min(numQuestions || 1, maxQuestions))
-    generate(clamped)
+    setRunningProvider(provider)
+    generate(clamped, provider)
   }
 
-  const buttonLabel =
-    phase === 'generating'
-      ? 'Đang soạn & rà soát...'
-      : phase === 'saving'
-        ? 'Đang lưu...'
-        : 'Soạn câu hỏi'
+  const runLabel =
+    phase === 'saving'
+      ? 'Đang lưu...'
+      : runningProvider === 'ollama'
+        ? 'Máy đang soạn... (có thể vài phút)'
+        : 'Đang soạn & rà soát...'
+
+  const ollamaWarn = ollamaHint(ollamaQuery.data)
 
   return (
     <div className="quiz-generate-panel">
       <h4>
         <Sparkles size={14} /> Soạn câu hỏi bằng AI
       </h4>
-
-      {cliStatus === 'not_found' && (
-        <p className="quiz-ai-warning">
-          Chưa tìm thấy Claude Code CLI trên máy. Cần cài đặt Claude Code trước khi dùng tính năng
-          này.
-        </p>
-      )}
-      {cliStatus === 'not_logged_in' && (
-        <p className="quiz-ai-warning">
-          Claude Code CLI chưa đăng nhập. Mở terminal, chạy lệnh <code>claude</code> một lần để
-          đăng nhập bằng tài khoản Pro/Max.
-        </p>
-      )}
-      {cliStatus === 'error' && (
-        <p className="quiz-ai-warning">Không kiểm tra được trạng thái Claude Code CLI.</p>
-      )}
 
       {topicWithoutLessons && (
         <p className="quiz-ai-warning">Chọn ít nhất một bài học ở trên để soạn câu hỏi.</p>
@@ -92,14 +105,47 @@ function QuizGeneratePanel({ scope }: QuizGeneratePanelProps): React.JSX.Element
             onChange={(e) => setNumQuestions(Number(e.target.value))}
           />
         </label>
-        <button
-          type="button"
-          disabled={busy || cliStatus !== 'ready' || topicWithoutLessons}
-          onClick={handleGenerate}
-        >
-          {buttonLabel}
-        </button>
       </div>
+
+      {busy ? (
+        <p className="quiz-generate-hint">{runLabel}</p>
+      ) : (
+        <div className="quiz-ai-engine-buttons">
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!ollamaReady || topicWithoutLessons}
+            title={!ollamaReady ? (ollamaWarn ?? 'Ollama chưa sẵn sàng') : undefined}
+            onClick={() => handleGenerate('ollama')}
+          >
+            <Cpu size={14} /> Soạn bằng máy (Ollama)
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={!claudeReady || topicWithoutLessons}
+            title={!claudeReady ? 'Claude Code CLI chưa sẵn sàng' : undefined}
+            onClick={() => handleGenerate('claude')}
+          >
+            <Cloud size={14} /> Soạn bằng Claude <span className="quiz-ai-cost">tốn token</span>
+          </button>
+        </div>
+      )}
+
+      {!busy && !ollamaReady && ollamaWarn && (
+        <p className="quiz-ai-warning">{ollamaWarn}</p>
+      )}
+      {!busy && !claudeReady && cliStatus === 'not_found' && (
+        <p className="quiz-ai-warning">
+          Chưa tìm thấy Claude Code CLI trên máy — vẫn soạn được bằng Ollama.
+        </p>
+      )}
+      {!busy && !claudeReady && cliStatus === 'not_logged_in' && (
+        <p className="quiz-ai-warning">
+          Claude Code CLI chưa đăng nhập. Mở terminal chạy <code>claude</code> một lần để đăng
+          nhập.
+        </p>
+      )}
 
       {outcome?.error && <p className="quiz-ai-error">{outcome.error}</p>}
       {outcome?.truncated && (

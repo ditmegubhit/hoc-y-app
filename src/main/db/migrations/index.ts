@@ -9,6 +9,8 @@ import * as m008 from './008_docx_page_split'
 import * as m009 from './009_attachment_annotations'
 import * as m010 from './010_quiz_m6'
 import * as m011 from './011_attachment_source'
+import * as m012 from './012_app_settings'
+import * as m013 from './013_quiz_learning'
 
 export interface Migration {
   id: string
@@ -28,5 +30,7 @@ export const migrations: Migration[] = [
   m008,
   m009,
   m010,
-  m011
+  m011,
+  m012,
+  m013
 ]

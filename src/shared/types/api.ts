@@ -13,9 +13,11 @@ import type {
   DraftQuestion,
   Question,
   UpdateQuestionInput,
-  ReviewedQuestion
+  ReviewedQuestion,
+  LearningExampleInput
 } from './question'
 import type { ClaudeCliStatus, GenerateQuizFromLessonResult } from './claudeCli'
+import type { AiProvider, AiSettings, OllamaStatus } from './ai'
 import type { ExamFile } from './examFile'
 import type {
   AttemptReview,
@@ -73,26 +75,36 @@ export interface AppApi {
   }
   ai: {
     checkAvailability: () => Promise<ClaudeCliStatus>
+    checkOllama: () => Promise<OllamaStatus>
+    getAiSettings: () => Promise<AiSettings>
+    setAiSettings: (patch: Partial<AiSettings>) => Promise<AiSettings>
     generateQuizFromLesson: (input: {
       lessonId: string
       numQuestions: number
+      provider: AiProvider
     }) => Promise<GenerateQuizFromLessonResult>
     generateQuizFromLessons: (input: {
       lessonIds: string[]
       numQuestions: number
       topicId?: string | null
+      provider: AiProvider
     }) => Promise<GenerateQuizFromLessonResult>
     saveDraftQuestions: (input: {
       questions: DraftQuestion[]
       lessonId?: string | null
       topicId?: string | null
+      provider: AiProvider
     }) => Promise<Question[]>
     listQuestionsByLesson: (lessonId: string) => Promise<Question[]>
     listQuestionsByLessonIds: (lessonIds: string[]) => Promise<Question[]>
     listQuestionsByTopic: (topicId: string) => Promise<Question[]>
     listQuestionsUnderTopic: (topicId: string) => Promise<Question[]>
     updateQuestion: (input: UpdateQuestionInput) => Promise<Question>
-    reviewQuestions: (input: { questionIds: string[] }) => Promise<ReviewedQuestion[]>
+    reviewQuestions: (input: {
+      questionIds: string[]
+      provider: AiProvider
+    }) => Promise<ReviewedQuestion[]>
+    recordLearningExamples: (examples: LearningExampleInput[]) => Promise<void>
     deleteQuestion: (id: string) => Promise<void>
   }
   quiz: {
