@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Wand2, Cpu, Cloud } from 'lucide-react'
+import { Wand2, Cpu, Cloud, Star } from 'lucide-react'
 import type { Question, ReviewedQuestion } from '@shared/types/question'
 import type { QuizLibraryRequest } from '@shared/types/quiz'
 import type { AiProvider } from '@shared/types/ai'
 import ConfirmDialog from '@renderer/components/common/ConfirmDialog'
 import { useQuestionsByLesson, useQuestionsUnderTopic } from '@renderer/queries/questionBank'
 import {
+  recordLearningExamples,
   useDeleteQuestion,
   useOllamaStatus,
   useReviewQuestions,
@@ -31,7 +32,25 @@ function QuestionLibraryItem({
 }): React.JSX.Element {
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [markedGood, setMarkedGood] = useState(false)
   const deleteMutation = useDeleteQuestion(scope)
+
+  const markAsGoodExample = (): void => {
+    recordLearningExamples([
+      {
+        kind: 'marked_good',
+        before: null,
+        after: {
+          questionText: question.questionText,
+          options: question.options,
+          explanation: question.explanation
+        },
+        lessonId: question.lessonId,
+        topicId: question.topicId
+      }
+    ])
+    setMarkedGood(true)
+  }
 
   const cls = `quiz-library-item${isNew ? ' quiz-library-item--new' : ''}`
 
@@ -69,6 +88,19 @@ function QuestionLibraryItem({
         <button type="button" onClick={() => setConfirmDelete(true)}>
           Xoá
         </button>
+        {markedGood ? (
+          <span className="quiz-review-status">
+            <Star size={13} fill="currentColor" /> Đã đánh dấu làm mẫu
+          </span>
+        ) : (
+          <button
+            type="button"
+            title="Đưa câu này vào làm mẫu cho Ollama học theo khi soạn câu mới"
+            onClick={markAsGoodExample}
+          >
+            <Star size={13} /> Đánh dấu làm mẫu tốt
+          </button>
+        )}
       </div>
 
       <ConfirmDialog

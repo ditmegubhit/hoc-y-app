@@ -54,6 +54,14 @@ const api: AppApi = {
       ipcRenderer.invoke(IpcChannels.ai.generateQuizFromLesson, input),
     generateQuizFromLessons: (input) =>
       ipcRenderer.invoke(IpcChannels.ai.generateQuizFromLessons, input),
+    onGenerateProgress: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: Parameters<typeof callback>[0]
+      ): void => callback(payload)
+      ipcRenderer.on(IpcChannels.ai.generateProgress, listener)
+      return () => ipcRenderer.removeListener(IpcChannels.ai.generateProgress, listener)
+    },
     saveDraftQuestions: (input) => ipcRenderer.invoke(IpcChannels.ai.saveDraftQuestions, input),
     listQuestionsByLesson: (lessonId) =>
       ipcRenderer.invoke(IpcChannels.ai.listQuestionsByLesson, { lessonId }),

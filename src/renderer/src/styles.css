@@ -1745,6 +1745,9 @@ input[type='number']:focus {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .question-edit-form {

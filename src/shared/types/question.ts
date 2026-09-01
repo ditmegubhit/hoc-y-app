@@ -48,10 +48,16 @@ export interface Question extends DraftQuestion {
   updatedAt: string
 }
 
-// 1 cap "cau chua dat -> cau da sua" dung lam vi du few-shot cho Ollama hoc dan.
+// Cac loai vi du hoc cho Ollama:
+// - claude_fix   : Claude sua khi ra soat (co before)
+// - ollama_fixed : user tu sua tay cau Ollama (co before)
+// - marked_good  : user danh dau 1 cau la mau tot (khong co before)
+export type LearningExampleKind = 'claude_fix' | 'ollama_fixed' | 'marked_good'
+
+// 1 vi du few-shot cho Ollama hoc dan. `before` = null voi loai 'marked_good'.
 export interface LearningExampleInput {
-  kind: 'claude_fix' | 'ollama_fixed'
-  before: QuestionDraftContent
+  kind: LearningExampleKind
+  before: QuestionDraftContent | null
   after: QuestionDraftContent
   lessonId: string | null
   topicId: string | null

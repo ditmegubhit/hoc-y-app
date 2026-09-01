@@ -38,6 +38,7 @@ export const IpcChannels = {
     setAiSettings: 'ai:setAiSettings',
     generateQuizFromLesson: 'ai:generateQuizFromLesson',
     generateQuizFromLessons: 'ai:generateQuizFromLessons',
+    generateProgress: 'ai:generateProgress',
     saveDraftQuestions: 'ai:saveDraftQuestions',
     listQuestionsByLesson: 'ai:listQuestionsByLesson',
     listQuestionsByLessonIds: 'ai:listQuestionsByLessonIds',

@@ -16,7 +16,11 @@ import type {
   ReviewedQuestion,
   LearningExampleInput
 } from './question'
-import type { ClaudeCliStatus, GenerateQuizFromLessonResult } from './claudeCli'
+import type {
+  ClaudeCliStatus,
+  GenerateQuizFromLessonResult,
+  QuizGenProgress
+} from './claudeCli'
 import type { AiProvider, AiSettings, OllamaStatus } from './ai'
 import type { ExamFile } from './examFile'
 import type {
@@ -82,13 +86,18 @@ export interface AppApi {
       lessonId: string
       numQuestions: number
       provider: AiProvider
+      refineWithClaude?: boolean
+      progressKey?: string
     }) => Promise<GenerateQuizFromLessonResult>
     generateQuizFromLessons: (input: {
       lessonIds: string[]
       numQuestions: number
       topicId?: string | null
       provider: AiProvider
+      refineWithClaude?: boolean
+      progressKey?: string
     }) => Promise<GenerateQuizFromLessonResult>
+    onGenerateProgress: (callback: (progress: QuizGenProgress) => void) => () => void
     saveDraftQuestions: (input: {
       questions: DraftQuestion[]
       lessonId?: string | null

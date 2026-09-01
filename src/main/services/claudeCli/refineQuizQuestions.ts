@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { runAiJson } from '../ai/aiClient'
+import { buildFixExamplesBlock } from '../ai/fewShotExamples'
 import { quizFromLessonJsonSchema } from './promptTemplates/quizFromLesson.prompt'
 import { buildRefinePrompt, buildReviewPrompt } from './promptTemplates/quizQuality.prompt'
 import type { ContentPiece } from './lessonContent'
@@ -49,10 +50,21 @@ export async function refineGeneratedQuestions(params: {
   questions: PlainQuestion[]
   existingQuestionTexts?: string[]
   provider?: AiProvider
+  scope?: { lessonIds?: string[]; topicId?: string | null }
 }): Promise<DraftQuestion[]> {
   if (params.questions.length === 0) return []
 
   const provider: AiProvider = params.provider ?? 'claude'
+  // Cap "chua dat -> da sua" chi day vao prompt Ollama (Claude tu biet cach sua,
+  // them vao chi ton token). Khoi nay giup 7B hoc kieu chinh.
+  const fixExamplesBlock =
+    provider === 'ollama'
+      ? buildFixExamplesBlock({
+          lessonIds: params.scope?.lessonIds,
+          topicId: params.scope?.topicId ?? null,
+          limit: 2
+        })
+      : null
   try {
     const result = await runAiJson({
       provider,
@@ -61,7 +73,8 @@ export async function refineGeneratedQuestions(params: {
         contentPieces: params.contentPieces,
         questions: params.questions,
         existingQuestions: params.existingQuestionTexts,
-        provider
+        provider,
+        fixExamplesBlock
       }),
       jsonSchema: quizFromLessonJsonSchema,
       timeoutMs: provider === 'ollama' ? 600_000 : 180_000

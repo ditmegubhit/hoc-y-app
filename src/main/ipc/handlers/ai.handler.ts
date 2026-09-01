@@ -16,19 +16,26 @@ const providerSchema = z.enum(['claude', 'ollama']).default('claude')
 const generateSchema = z.object({
   lessonId: z.string(),
   numQuestions: z.number().int().min(1).max(20),
-  provider: providerSchema
+  provider: providerSchema,
+  // "Ollama nhap -> Claude chinh": chay luot ra soat & sua bang Claude.
+  refineWithClaude: z.boolean().optional(),
+  // Khoa pham vi de renderer dinh tuyen event tien do.
+  progressKey: z.string().optional()
 })
 
 const generateManySchema = z.object({
   lessonIds: z.array(z.string()).min(1),
   numQuestions: z.number().int().min(1).max(50),
   topicId: z.string().nullable().optional(),
-  provider: providerSchema
+  provider: providerSchema,
+  refineWithClaude: z.boolean().optional(),
+  progressKey: z.string().optional()
 })
 
 const aiSettingsSchema = z.object({
   ollamaModel: z.string().min(1).optional(),
   ollamaPath: z.string().optional(),
+  ollamaRefineWithClaude: z.boolean().optional(),
   ollamaAutoRefine: z.boolean().optional(),
   ollamaUseLearnedExamples: z.boolean().optional()
 })
@@ -62,8 +69,8 @@ const recordLearningSchema = z.object({
   examples: z
     .array(
       z.object({
-        kind: z.enum(['claude_fix', 'ollama_fixed']),
-        before: draftContentSchema,
+        kind: z.enum(['claude_fix', 'ollama_fixed', 'marked_good']),
+        before: draftContentSchema.nullable(),
         after: draftContentSchema,
         lessonId: z.string().nullable(),
         topicId: z.string().nullable()
@@ -101,12 +108,21 @@ export function registerAiHandlers(): void {
     return appSettingsRepo.setAiSettings(patch)
   })
 
-  ipcMain.handle(IpcChannels.ai.generateQuizFromLesson, (_event, payload) => {
+  ipcMain.handle(IpcChannels.ai.generateQuizFromLesson, (event, payload) => {
     const input = generateSchema.parse(payload)
-    return generateQuizFromLesson(input)
+    return generateQuizFromLesson({
+      lessonId: input.lessonId,
+      numQuestions: input.numQuestions,
+      provider: input.provider,
+      refineProvider: input.refineWithClaude ? 'claude' : undefined,
+      onProgress: (p) => {
+        if (!event.sender.isDestroyed())
+          event.sender.send(IpcChannels.ai.generateProgress, { ...p, key: input.progressKey })
+      }
+    })
   })
 
-  ipcMain.handle(IpcChannels.ai.generateQuizFromLessons, (_event, payload) => {
+  ipcMain.handle(IpcChannels.ai.generateQuizFromLessons, (event, payload) => {
     const input = generateManySchema.parse(payload)
     const titles = input.lessonIds
       .map((id) => lessonsRepo.getLesson(id)?.title)
@@ -128,7 +144,12 @@ export function registerAiHandlers(): void {
       subjectTitle,
       existingQuestionTexts,
       provider: input.provider,
-      topicId: input.topicId ?? null
+      refineProvider: input.refineWithClaude ? 'claude' : undefined,
+      topicId: input.topicId ?? null,
+      onProgress: (p) => {
+        if (!event.sender.isDestroyed())
+          event.sender.send(IpcChannels.ai.generateProgress, { ...p, key: input.progressKey })
+      }
     })
   })
 

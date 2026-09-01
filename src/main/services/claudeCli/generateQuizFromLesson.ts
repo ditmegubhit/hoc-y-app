@@ -3,12 +3,17 @@ import { collectLessonContentPieces } from './lessonContent'
 import * as lessonsRepo from '../../db/repositories/lessons.repo'
 import * as questionBankRepo from '../../db/repositories/questionBank.repo'
 import type { AiProvider } from '../../../shared/types/ai'
-import type { GenerateQuizFromLessonResult } from '../../../shared/types/claudeCli'
+import type {
+  GenerateQuizFromLessonResult,
+  QuizGenProgress
+} from '../../../shared/types/claudeCli'
 
 export async function generateQuizFromLesson(params: {
   lessonId: string
   numQuestions: number
   provider?: AiProvider
+  refineProvider?: AiProvider
+  onProgress?: (p: QuizGenProgress) => void
 }): Promise<GenerateQuizFromLessonResult> {
   const lesson = lessonsRepo.getLesson(params.lessonId)
   if (!lesson) return { ok: false, errorMessage: 'Không tìm thấy bài học.' }
@@ -31,6 +36,8 @@ export async function generateQuizFromLesson(params: {
     numQuestions: params.numQuestions,
     existingQuestionTexts,
     provider: params.provider,
-    scope: { lessonIds: [params.lessonId] }
+    refineProvider: params.refineProvider,
+    scope: { lessonIds: [params.lessonId] },
+    onProgress: params.onProgress
   })
 }

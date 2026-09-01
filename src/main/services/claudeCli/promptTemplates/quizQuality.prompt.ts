@@ -91,6 +91,8 @@ export function buildRefinePrompt(params: {
   questions: { questionText: string; options: { text: string; isCorrect: boolean }[]; explanation: string | null }[]
   existingQuestions?: string[]
   provider?: AiProvider
+  // Cac cap "chua dat -> da sua" lam mau cach chinh (chu yeu cho Ollama).
+  fixExamplesBlock?: string | null
 }): string {
   const avoid =
     params.existingQuestions && params.existingQuestions.length > 0
@@ -100,12 +102,14 @@ export function buildRefinePrompt(params: {
           .join('\n')}`
       : ''
 
+  const fixBlock = params.fixExamplesBlock ? `\n\n${params.fixExamplesBlock}` : ''
+
   return `Bạn là chuyên gia thẩm định câu hỏi trắc nghiệm y khoa.
 
 Dưới đây là bộ câu hỏi nháp cho "${params.subjectTitle}" và NỘI DUNG NGUỒN gốc.
 Hãy RÀ SOÁT và CẢI TIẾN toàn bộ bộ câu hỏi theo tiêu chí bên dưới, GIỮ NGUYÊN phạm vi kiến thức và mục tiêu kiểm tra ban đầu của mỗi câu.
 
-${QUIZ_QUALITY_CHECKLIST}
+${QUIZ_QUALITY_CHECKLIST}${fixBlock}
 
 Trả về bộ câu hỏi ĐÃ CẢI TIẾN (cùng định dạng JSON: mảng questions, mỗi câu có question, options[4] mỗi option {text, isCorrect}, explanation). Số câu có thể bằng hoặc ít hơn bản nháp nếu phải loại câu hỏng không cứu được — KHÔNG bịa thêm câu ngoài phạm vi nguồn.${avoid}
 

@@ -69,10 +69,13 @@ const MAX_CONTENT_CHARS_BY_PROVIDER: Record<AiProvider, number> = {
   ollama: 11_000
 }
 // Gioi han so cau da co dua vao prompt (tranh phinh token khi ngan hang lon).
+// Ollama: nang tu 8 len ~22 (van nguyen van, chua rut gon) de model "biet" nhieu
+// cau da hoi hon truoc khi sinh, giam so vong phai sinh bu vi trung; dedup van
+// chay sau khi sinh lam luoi an toan. Uu tien cau MOI NHAT (ca cau vua sinh
+// trong chinh luot nay, xem `avoid.unshift` o generateQuizFromLessons.ts).
 const MAX_EXISTING_BY_PROVIDER: Record<AiProvider, number> = {
   claude: 120,
-  // Danh sach "dung lap" lam phinh prompt Ollama; dedup van chay sau khi sinh.
-  ollama: 8
+  ollama: 22
 }
 
 interface Piece {
@@ -126,7 +129,21 @@ export function buildQuizFromLessonPrompt(params: {
     )
     .join('\n\n')
 
-  const existing = (params.existingQuestions ?? []).slice(0, MAX_EXISTING_BY_PROVIDER[provider])
+  let existing = (params.existingQuestions ?? []).slice(0, MAX_EXISTING_BY_PROVIDER[provider])
+  // Them tran ky tu cho Ollama (danh sach nang tu 8 len 22 cau nguyen van -> vai
+  // cau dai bat thuong van khong duoc lam phinh prompt qua muc, anh huong toc do).
+  if (provider === 'ollama') {
+    let used = 0
+    let cut = existing.length
+    for (let i = 0; i < existing.length; i++) {
+      used += existing[i].length + 4
+      if (used > 2600) {
+        cut = i
+        break
+      }
+    }
+    existing = existing.slice(0, cut)
+  }
   // Khoi "dung lap" thay doi moi lan soan -> dat o CUOI prompt de phan noi dung
   // nguon (on dinh theo bai hoc) duoc cache prompt tai su dung o lan soan sau.
   const avoidBlock =

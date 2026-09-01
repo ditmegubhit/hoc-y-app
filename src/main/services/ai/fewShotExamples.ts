@@ -126,3 +126,50 @@ export function buildFewShotBlock(params: {
     examples
   )}`
 }
+
+function compact(c: QuestionDraftContent): unknown {
+  return {
+    question: c.questionText,
+    options: c.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
+    explanation: c.explanation ?? ''
+  }
+}
+
+/**
+ * Khoi vi du "cau chua dat -> cau da sua" cho luot RA SOAT & SUA cua Ollama.
+ * Lay cac cap before/after tu ngan hang hoc (Claude sua / user sua) trong pham
+ * vi. null neu chua co cap nao.
+ */
+export function buildFixExamplesBlock(params: {
+  lessonIds?: string[]
+  topicId?: string | null
+  limit?: number
+}): string | null {
+  const limit = params.limit ?? 3
+  let pairs: { before: QuestionDraftContent; after: QuestionDraftContent }[] = []
+  try {
+    pairs = quizLearningRepo
+      .listExamplesForScope({
+        lessonIds: params.lessonIds ?? [],
+        topicId: params.topicId ?? null,
+        limit: limit * 2
+      })
+      .filter((e): e is typeof e & { before: QuestionDraftContent } => e.before != null)
+      .slice(0, limit)
+      .map((e) => ({ before: e.before, after: e.after }))
+  } catch {
+    return null
+  }
+  if (pairs.length === 0) return null
+
+  const body = pairs
+    .map(
+      (p, i) =>
+        `Ví dụ ${i + 1}:\n` +
+        `CHƯA ĐẠT: ${JSON.stringify(compact(p.before), null, 1)}\n` +
+        `ĐÃ SỬA:   ${JSON.stringify(compact(p.after), null, 1)}`
+    )
+    .join('\n\n')
+
+  return `VÍ DỤ CÁCH SỬA (tham khảo kiểu chỉnh: cân bằng độ dài phương án, làm nhiễu hợp lý hơn, giải thích gọn):\n\n${body}`
+}

@@ -1,7 +1,8 @@
 import { runClaudeHeadless, type ClaudeCliResult } from '../claudeCli/claudeCliClient'
-import { runOllamaJson } from '../ollama/ollamaClient'
+import { runOllamaJson, embedTexts, findEmbeddingModel } from '../ollama/ollamaClient'
 import * as appSettingsRepo from '../../db/repositories/appSettings.repo'
 import type { AiProvider } from '../../../shared/types/ai'
+import type { Embedder } from '../quiz/semanticDedup'
 
 export interface RunAiJsonParams {
   provider: AiProvider
@@ -15,6 +16,8 @@ export interface RunAiJsonParams {
   model?: string
   // num_ctx cho Ollama (bo qua voi Claude).
   numCtx?: number
+  // Bao tien do khi Ollama stream (bo qua voi Claude - CLI khong stream JSON).
+  onPartial?: (fullContentSoFar: string) => void
 }
 
 /**
@@ -30,7 +33,8 @@ export async function runAiJson(params: RunAiJsonParams): Promise<ClaudeCliResul
       jsonSchema: params.jsonSchema,
       model,
       timeoutMs: params.timeoutMs,
-      numCtx: params.numCtx
+      numCtx: params.numCtx,
+      onPartial: params.onPartial
     })
   }
 
@@ -56,6 +60,16 @@ export interface OllamaGenTuning {
   learn: boolean
   numCtx: number
   maxContentChars: number
+}
+
+/**
+ * Ham nhung dua tren model nhung da tai san tren may (neu co). Dung cho so trung
+ * cau hoi theo ngu nghia. undefined -> so trung chi bang JS thuan.
+ */
+export async function maybeOllamaEmbedder(): Promise<Embedder | undefined> {
+  const model = await findEmbeddingModel()
+  if (!model) return undefined
+  return (texts: string[]) => embedTexts(texts, model)
 }
 
 export function ollamaGenTuning(): OllamaGenTuning {

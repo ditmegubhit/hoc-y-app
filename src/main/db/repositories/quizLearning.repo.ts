@@ -1,10 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import { getDb } from '../index'
-import type { LearningExampleInput, QuestionDraftContent } from '../../../shared/types/question'
+import type {
+  LearningExampleInput,
+  LearningExampleKind,
+  QuestionDraftContent
+} from '../../../shared/types/question'
 
 export interface LearningExample {
   id: string
-  kind: 'claude_fix' | 'ollama_fixed'
+  kind: LearningExampleKind
   topicId: string | null
   lessonId: string | null
   before: QuestionDraftContent | null
@@ -34,6 +38,14 @@ function map(row: Row): LearningExample {
   }
 }
 
+function afterQuestionText(json: string): string {
+  try {
+    return (JSON.parse(json) as QuestionDraftContent).questionText.trim().toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
 export function recordExamples(examples: LearningExampleInput[]): void {
   if (examples.length === 0) return
   const db = getDb()
@@ -41,15 +53,30 @@ export function recordExamples(examples: LearningExampleInput[]): void {
     `INSERT INTO quiz_learning_examples (id, kind, topic_id, lesson_id, before_json, after_json)
      VALUES (?, ?, ?, ?, ?, ?)`
   )
+  // Tranh luu trung mau 'marked_good' cho cung 1 cau (user co the bam nhieu lan).
+  const existingGood = new Set(
+    (
+      db
+        .prepare(`SELECT after_json FROM quiz_learning_examples WHERE kind = 'marked_good'`)
+        .all() as { after_json: string }[]
+    ).map((r) => afterQuestionText(r.after_json))
+  )
+
   const tx = db.transaction(() => {
     for (const ex of examples) {
+      const afterJson = JSON.stringify(ex.after)
+      if (ex.kind === 'marked_good') {
+        const key = ex.after.questionText.trim().toLowerCase()
+        if (existingGood.has(key)) continue
+        existingGood.add(key)
+      }
       insert.run(
         randomUUID(),
         ex.kind,
         ex.topicId,
         ex.lessonId,
-        JSON.stringify(ex.before),
-        JSON.stringify(ex.after)
+        ex.before ? JSON.stringify(ex.before) : null,
+        afterJson
       )
     }
   })
@@ -64,7 +91,7 @@ export function listExamplesForScope(params: {
   limit: number
 }): LearningExample[] {
   const db = getDb()
-  const orderBy = `ORDER BY CASE kind WHEN 'claude_fix' THEN 0 ELSE 1 END, created_at DESC`
+  const orderBy = `ORDER BY CASE kind WHEN 'marked_good' THEN 0 WHEN 'claude_fix' THEN 1 ELSE 2 END, created_at DESC`
 
   const inScope: Row[] = []
   if (params.topicId) {

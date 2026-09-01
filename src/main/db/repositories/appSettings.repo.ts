@@ -31,26 +31,37 @@ export function getAll(): Record<string, string> {
 const K = {
   ollamaModel: 'ollama_model',
   ollamaPath: 'ollama_path',
+  ollamaRefineWithClaude: 'ollama_refine_with_claude',
   ollamaAutoRefine: 'ollama_auto_refine',
   ollamaUseLearnedExamples: 'ollama_use_learned'
 } as const
+
+function boolOr(value: string | undefined, fallback: boolean): boolean {
+  return value === undefined ? fallback : value === '1'
+}
 
 export function getAiSettings(): AiSettings {
   const all = getAll()
   return {
     ollamaModel: all[K.ollamaModel] || DEFAULT_AI_SETTINGS.ollamaModel,
     ollamaPath: all[K.ollamaPath] ?? DEFAULT_AI_SETTINGS.ollamaPath,
-    ollamaAutoRefine: all[K.ollamaAutoRefine] === '1',
-    ollamaUseLearnedExamples:
-      all[K.ollamaUseLearnedExamples] === undefined
-        ? DEFAULT_AI_SETTINGS.ollamaUseLearnedExamples
-        : all[K.ollamaUseLearnedExamples] === '1'
+    ollamaRefineWithClaude: boolOr(
+      all[K.ollamaRefineWithClaude],
+      DEFAULT_AI_SETTINGS.ollamaRefineWithClaude
+    ),
+    ollamaAutoRefine: boolOr(all[K.ollamaAutoRefine], DEFAULT_AI_SETTINGS.ollamaAutoRefine),
+    ollamaUseLearnedExamples: boolOr(
+      all[K.ollamaUseLearnedExamples],
+      DEFAULT_AI_SETTINGS.ollamaUseLearnedExamples
+    )
   }
 }
 
 export function setAiSettings(patch: Partial<AiSettings>): AiSettings {
   if (patch.ollamaModel !== undefined) set(K.ollamaModel, patch.ollamaModel)
   if (patch.ollamaPath !== undefined) set(K.ollamaPath, patch.ollamaPath)
+  if (patch.ollamaRefineWithClaude !== undefined)
+    set(K.ollamaRefineWithClaude, patch.ollamaRefineWithClaude ? '1' : '0')
   if (patch.ollamaAutoRefine !== undefined)
     set(K.ollamaAutoRefine, patch.ollamaAutoRefine ? '1' : '0')
   if (patch.ollamaUseLearnedExamples !== undefined)

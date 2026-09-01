@@ -113,14 +113,28 @@ function SettingsPage(): React.JSX.Element {
         <label className="settings-field settings-field--check">
           <input
             type="checkbox"
+            checked={settings?.ollamaRefineWithClaude ?? true}
+            disabled={!settings}
+            onChange={(e) =>
+              setSettings.mutate({ ollamaRefineWithClaude: e.target.checked })
+            }
+          />
+          Sau khi Ollama soạn, để Claude rà soát &amp; sửa — Ollama học theo (tốn ít token
+          Claude). Tắt để chạy hoàn toàn offline bằng máy.
+        </label>
+
+        <label className="settings-field settings-field--check">
+          <input
+            type="checkbox"
             checked={settings?.ollamaUseLearnedExamples ?? true}
             disabled={!settings}
             onChange={(e) =>
               setSettings.mutate({ ollamaUseLearnedExamples: e.target.checked })
             }
           />
-          Cho Ollama học từ ngân hàng câu hỏi — đưa các câu Claude đã tạo/sửa và câu bạn đã
-          chỉnh vào làm mẫu (chất lượng tốt hơn, mỗi lần soạn chậm hơn một chút)
+          Cho Ollama học từ ngân hàng câu hỏi — đưa các câu Claude đã tạo/sửa, câu bạn đã
+          chỉnh và câu bạn đánh dấu &quot;làm mẫu tốt&quot; vào prompt (chất lượng tốt hơn,
+          soạn chậm hơn một chút)
         </label>
 
         <label className="settings-field settings-field--check">
@@ -130,8 +144,8 @@ function SettingsPage(): React.JSX.Element {
             disabled={!settings}
             onChange={(e) => setSettings.mutate({ ollamaAutoRefine: e.target.checked })}
           />
-          Chạy thêm lượt &quot;rà soát &amp; sửa&quot; sau khi Ollama soạn (chậm hơn, chất lượng
-          tốt hơn)
+          Khi KHÔNG dùng Claude sửa: chạy thêm lượt Ollama tự &quot;rà soát &amp; sửa&quot;
+          (chậm hơn nhiều, đỡ hơn một chút)
         </label>
 
         <div className="settings-ai-row">

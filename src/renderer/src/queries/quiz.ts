@@ -97,6 +97,21 @@ export function usePlayableQuestionsForTopic(
 
 // ---------- Sinh cau hoi bang AI ----------
 
+// Dang ky 1 lan lang nghe event tien do sinh cau -> ghi vao store theo `key`.
+let progressSubscribed = false
+function ensureProgressSubscription(): void {
+  if (progressSubscribed) return
+  progressSubscribed = true
+  window.api.ai.onGenerateProgress((p) => {
+    if (p.key) useQuizGenerationStore.getState().setProgress(p.key, p)
+  })
+}
+
+export interface GenerateOptions {
+  // "Ollama nhap -> Claude chinh": sinh bang may roi Claude ra soat & sua.
+  refineWithClaude?: boolean
+}
+
 // Sinh + luu chay ngoai vong doi component, khoa theo `quizScopeKey(scope)` de
 // khong lan trang thai giua cac bai hoc, va luu dung vao pham vi da bam luc do.
 export function useQuizGeneration(scope: QuizScope) {
@@ -104,12 +119,19 @@ export function useQuizGeneration(scope: QuizScope) {
   const key = quizScopeKey(scope)
   const phase = useQuizGenerationStore((s) => s.phase[key] ?? 'idle')
   const outcome = useQuizGenerationStore((s) => s.outcome[key] ?? null)
+  const progress = useQuizGenerationStore((s) => s.progress[key] ?? null)
 
-  const generate = (numQuestions: number, provider: AiProvider): void => {
+  const generate = (
+    numQuestions: number,
+    provider: AiProvider,
+    options: GenerateOptions = {}
+  ): void => {
+    ensureProgressSubscription()
     const captured = scope // "chup" pham vi ngay luc bam
     const genStore = useQuizGenerationStore.getState()
     genStore.setPhase(key, 'generating')
     genStore.setOutcome(key, null)
+    genStore.setProgress(key, null)
     useRecentQuestionsStore.getState().startGenerating()
 
     void (async () => {
@@ -119,27 +141,34 @@ export function useQuizGeneration(scope: QuizScope) {
             ? await window.api.ai.generateQuizFromLesson({
                 lessonId: captured.lessonId,
                 numQuestions,
-                provider
+                provider,
+                refineWithClaude: options.refineWithClaude,
+                progressKey: key
               })
             : await window.api.ai.generateQuizFromLessons({
                 lessonIds: captured.lessonIds,
                 numQuestions,
                 topicId: captured.topicId,
-                provider
+                provider,
+                refineWithClaude: options.refineWithClaude,
+                progressKey: key
               })
 
         if (!gen.ok || !gen.questions || gen.questions.length === 0) {
           genStore.setPhase(key, 'idle')
+          genStore.setProgress(key, null)
           genStore.setOutcome(key, {
             savedCount: 0,
             duplicates: gen.duplicatesRemoved ?? 0,
             truncated: Boolean(gen.truncated),
+            shortfall: gen.shortfall ?? 0,
             error: gen.errorMessage ?? 'Có lỗi xảy ra khi tạo câu hỏi.'
           })
           return
         }
 
         genStore.setPhase(key, 'saving')
+        genStore.setProgress(key, null)
         const saved = await window.api.ai.saveDraftQuestions(
           captured.type === 'lesson'
             ? { questions: gen.questions, lessonId: captured.lessonId, provider }
@@ -152,22 +181,25 @@ export function useQuizGeneration(scope: QuizScope) {
           savedCount: saved.length,
           duplicates: gen.duplicatesRemoved ?? 0,
           truncated: Boolean(gen.truncated),
+          shortfall: gen.shortfall ?? 0,
           error: null
         })
         invalidateQuestionBank(qc)
       } catch {
         genStore.setPhase(key, 'idle')
+        genStore.setProgress(key, null)
         genStore.setOutcome(key, {
           savedCount: 0,
           duplicates: 0,
           truncated: false,
+          shortfall: 0,
           error: 'Không gọi được AI để tạo câu hỏi. Thử lại nhé.'
         })
       }
     })()
   }
 
-  return { phase, outcome, generate }
+  return { phase, outcome, progress, generate }
 }
 
 export function useDeleteQuestion(_scope: QuizScope) {

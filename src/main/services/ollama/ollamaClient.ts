@@ -17,7 +17,10 @@ function httpJson(
   path: string,
   method: 'GET' | 'POST',
   body: string | null,
-  timeoutMs: number
+  timeoutMs: number,
+  // Neu truyen: goi voi tung chunk text tho (dung cho stream NDJSON). Van resolve
+  // voi toan bo text o cuoi.
+  onChunk?: (chunk: string) => void
 ): Promise<{ status: number; text: string }> {
   return new Promise((resolve, reject) => {
     const req = httpRequest(
@@ -34,7 +37,10 @@ function httpJson(
       (res) => {
         let data = ''
         res.setEncoding('utf8')
-        res.on('data', (chunk) => (data += chunk))
+        res.on('data', (chunk) => {
+          data += chunk
+          onChunk?.(chunk)
+        })
         res.on('end', () => resolve({ status: res.statusCode ?? 0, text: data }))
       }
     )
@@ -156,6 +162,9 @@ async function isOnPath(): Promise<boolean> {
 /**
  * Goi Ollama /api/chat voi structured output (format = JSON schema). Tra ve
  * cung hinh dang `ClaudeCliResult` de pipeline sinh cau tai su dung.
+ *
+ * `onPartial`: neu truyen -> bat che do stream, goi lien tuc voi TOAN BO noi
+ * dung JSON da nhan tinh toi luc do (dung de bao tien do "da soan X cau").
  */
 export async function runOllamaJson(params: {
   prompt: string
@@ -164,6 +173,7 @@ export async function runOllamaJson(params: {
   model: string
   timeoutMs?: number
   numCtx?: number
+  onPartial?: (fullContentSoFar: string) => void
 }): Promise<ClaudeCliResult> {
   const up = await ensureOllamaServer()
   if (!up) {
@@ -174,11 +184,13 @@ export async function runOllamaJson(params: {
   if (params.systemPrompt) messages.push({ role: 'system', content: params.systemPrompt })
   messages.push({ role: 'user', content: params.prompt })
 
+  const streaming = typeof params.onPartial === 'function'
+
   const body = JSON.stringify({
     model: params.model,
     messages,
     format: params.jsonSchema,
-    stream: false,
+    stream: streaming,
     // Giu model nam trong RAM/VRAM 30 phut -> khong nap lai (~15s) khi soan nhieu lan.
     keep_alive: '30m',
     options: {
@@ -193,8 +205,39 @@ export async function runOllamaJson(params: {
     }
   })
 
+  // Che do stream: moi dong la 1 JSON {message:{content}, done}. Gom `content`
+  // lai, goi onPartial voi phan da co. Giu buffer dong do dang.
+  let streamContent = ''
+  let lineBuf = ''
+  const onChunk = streaming
+    ? (chunk: string): void => {
+        lineBuf += chunk
+        let nl: number
+        while ((nl = lineBuf.indexOf('\n')) !== -1) {
+          const line = lineBuf.slice(0, nl).trim()
+          lineBuf = lineBuf.slice(nl + 1)
+          if (!line) continue
+          try {
+            const obj = JSON.parse(line) as { message?: { content?: string } }
+            if (obj.message?.content) {
+              streamContent += obj.message.content
+              params.onPartial?.(streamContent)
+            }
+          } catch {
+            // dong chua tron ven - hiem khi stream cua Ollama
+          }
+        }
+      }
+    : undefined
+
   try {
-    const res = await httpJson('/api/chat', 'POST', body, params.timeoutMs ?? 300_000)
+    const res = await httpJson(
+      '/api/chat',
+      'POST',
+      body,
+      params.timeoutMs ?? 300_000,
+      onChunk
+    )
 
     if (res.status !== 200) {
       if (res.status === 404) {
@@ -206,8 +249,22 @@ export async function runOllamaJson(params: {
       return { ok: false, errorMessage: `Ollama lỗi ${res.status}: ${res.text.slice(0, 300)}` }
     }
 
-    const data = JSON.parse(res.text) as { message?: { content?: string } }
-    const content = data.message?.content?.trim()
+    let content: string | undefined
+    if (streaming) {
+      // flush not do dang (thuong rong o cuoi vi Ollama xuong dong sau moi obj)
+      if (lineBuf.trim()) {
+        try {
+          const obj = JSON.parse(lineBuf.trim()) as { message?: { content?: string } }
+          if (obj.message?.content) streamContent += obj.message.content
+        } catch {
+          // bo qua
+        }
+      }
+      content = streamContent.trim()
+    } else {
+      const data = JSON.parse(res.text) as { message?: { content?: string } }
+      content = data.message?.content?.trim()
+    }
     if (!content) {
       return { ok: false, errorMessage: 'Ollama trả về nội dung rỗng.' }
     }
@@ -230,6 +287,56 @@ export async function runOllamaJson(params: {
           ? 'Hết thời gian chờ Ollama (model chạy trên máy khá chậm). Thử ít câu hơn một lần.'
           : `Không gọi được Ollama: ${msg}`
     }
+  }
+}
+
+// ---- Embeddings (cho so trung cau hoi theo ngu nghia) ----
+
+// Ten model chuyen nhung. Neu may co san mot trong so nay -> dung de so trung
+// tot hon; khong co thi thoi (so trung van chay bang JS thuan).
+const EMBED_MODEL_RE = /embed|minilm|arctic|paraphrase|^bge|gte-|e5-/i
+
+let embedModelCache: { model: string | null; at: number } | null = null
+
+/** Tim model nhung da tai tren may (cache 60s). null neu khong co. */
+export async function findEmbeddingModel(): Promise<string | null> {
+  if (embedModelCache && Date.now() - embedModelCache.at < 60_000) {
+    return embedModelCache.model
+  }
+  const tags = await fetchTags(4000)
+  const model = tags?.find((t) => EMBED_MODEL_RE.test(t)) ?? null
+  embedModelCache = { model, at: Date.now() }
+  return model
+}
+
+/**
+ * Nhung 1 lo van ban qua Ollama /api/embed. Tra null neu that bai / khong co
+ * model -> ben goi tu dong lui ve so trung bang JS thuan.
+ */
+export async function embedTexts(
+  texts: string[],
+  model?: string
+): Promise<number[][] | null> {
+  if (texts.length === 0) return []
+  const embedModel = model ?? (await findEmbeddingModel())
+  if (!embedModel) return null
+
+  const up = await ensureOllamaServer()
+  if (!up) return null
+
+  try {
+    const body = JSON.stringify({ model: embedModel, input: texts, keep_alive: '10m' })
+    const res = await httpJson('/api/embed', 'POST', body, 60_000)
+    if (res.status !== 200) {
+      console.error('[ollama] /api/embed status', res.status)
+      return null
+    }
+    const data = JSON.parse(res.text) as { embeddings?: number[][] }
+    if (!data.embeddings || data.embeddings.length !== texts.length) return null
+    return data.embeddings
+  } catch (err) {
+    console.error('[ollama] /api/embed fail:', (err as Error).message)
+    return null
   }
 }
 
