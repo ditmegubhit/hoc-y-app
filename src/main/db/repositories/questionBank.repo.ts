@@ -20,6 +20,7 @@ interface QuestionRow {
   exam_file_id: string | null
   topic_id: string | null
   status: string
+  marked_good: number
   created_at: string
   updated_at: string
 }
@@ -36,6 +37,7 @@ function mapQuestion(row: QuestionRow): Question {
     examFileId: row.exam_file_id,
     topicId: row.topic_id,
     status: row.status as QuestionStatus,
+    markedGood: row.marked_good === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -193,6 +195,12 @@ export function listQuestionsBySource(source: QuestionSource): Question[] {
     .prepare('SELECT * FROM question_bank WHERE source = ? ORDER BY created_at DESC')
     .all(source) as QuestionRow[]
   return rows.map(mapQuestion)
+}
+
+export function setMarkedGood(id: string, value: boolean): void {
+  getDb()
+    .prepare('UPDATE question_bank SET marked_good = ? WHERE id = ?')
+    .run(value ? 1 : 0, id)
 }
 
 export function deleteQuestion(id: string): void {

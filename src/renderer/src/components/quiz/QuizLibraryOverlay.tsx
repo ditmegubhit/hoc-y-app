@@ -32,7 +32,7 @@ function QuestionLibraryItem({
 }): React.JSX.Element {
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [markedGood, setMarkedGood] = useState(false)
+  const [markedGood, setMarkedGood] = useState(question.markedGood)
   const deleteMutation = useDeleteQuestion(scope)
 
   const markAsGoodExample = (): void => {
@@ -46,7 +46,8 @@ function QuestionLibraryItem({
           explanation: question.explanation
         },
         lessonId: question.lessonId,
-        topicId: question.topicId
+        topicId: question.topicId,
+        questionId: question.id
       }
     ])
     setMarkedGood(true)

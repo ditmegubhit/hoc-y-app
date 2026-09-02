@@ -73,7 +73,8 @@ const recordLearningSchema = z.object({
         before: draftContentSchema.nullable(),
         after: draftContentSchema,
         lessonId: z.string().nullable(),
-        topicId: z.string().nullable()
+        topicId: z.string().nullable(),
+        questionId: z.string().optional()
       })
     )
     .min(1)
@@ -181,6 +182,11 @@ export function registerAiHandlers(): void {
   ipcMain.handle(IpcChannels.ai.recordLearningExamples, (_event, payload) => {
     const { examples } = recordLearningSchema.parse(payload)
     quizLearningRepo.recordExamples(examples)
+    for (const ex of examples) {
+      if (ex.kind === 'marked_good' && ex.questionId) {
+        questionBankRepo.setMarkedGood(ex.questionId, true)
+      }
+    }
   })
 
   ipcMain.handle(IpcChannels.ai.listQuestionsByLesson, (_event, payload) => {

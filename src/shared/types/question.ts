@@ -44,6 +44,7 @@ export interface Question extends DraftQuestion {
   examFileId: string | null
   topicId: string | null
   status: QuestionStatus
+  markedGood: boolean
   createdAt: string
   updatedAt: string
 }
@@ -61,4 +62,7 @@ export interface LearningExampleInput {
   after: QuestionDraftContent
   lessonId: string | null
   topicId: string | null
+  // Chi dung voi kind 'marked_good' - de ghi nhan trang thai marked_good tren
+  // chinh cau hoi (question_bank), khong luu vao quiz_learning_examples.
+  questionId?: string
 }

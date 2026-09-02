@@ -11,6 +11,7 @@ import * as m010 from './010_quiz_m6'
 import * as m011 from './011_attachment_source'
 import * as m012 from './012_app_settings'
 import * as m013 from './013_quiz_learning'
+import * as m014 from './014_question_marked_good'
 
 export interface Migration {
   id: string
@@ -32,5 +33,6 @@ export const migrations: Migration[] = [
   m010,
   m011,
   m012,
-  m013
+  m013,
+  m014
 ]
