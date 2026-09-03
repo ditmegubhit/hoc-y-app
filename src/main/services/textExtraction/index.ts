@@ -3,8 +3,13 @@ import { extractPdfText } from './pdf.extractor'
 import { extractDocxText } from './docx.extractor'
 import { extractPptxText } from './pptx.extractor'
 import { extractImageText } from './image.extractor'
+import { extractLegacyOfficeText } from './legacyOffice.extractor'
 
-export type ExtractableFileType = 'pdf' | 'docx' | 'pptx' | 'image'
+// 'docLegacy'/'pptLegacy' = .doc/.ppt (Office 97-2003, nhi phan OLE) - phai
+// xu ly khac .docx/.pptx (zip). Loai file luu trong DB van la 'docx'/'pptx'
+// (Word/PowerPoint mo file .doc/.ppt binh thuong nen phan xem/mo tai vi tri
+// khong doi), chi rieng buoc trich xuat text di duong chuyen sang PDF.
+export type ExtractableFileType = 'pdf' | 'docx' | 'pptx' | 'image' | 'docLegacy' | 'pptLegacy'
 
 // unitType/unitIndex xac dinh vi tri (trang PDF, slide PPTX, hoac toan bo
 // tai lieu voi docx/anh) de sau nay tim kiem co the tro thang toi dung noi
@@ -31,6 +36,8 @@ export function detectExtractableType(filePath: string): ExtractableFileType | n
   if (ext === '.pdf') return 'pdf'
   if (ext === '.docx') return 'docx'
   if (ext === '.pptx') return 'pptx'
+  if (ext === '.doc') return 'docLegacy'
+  if (ext === '.ppt') return 'pptLegacy'
   if (ext === '.png' || ext === '.jpg' || ext === '.jpeg') return 'image'
   return null
 }
@@ -38,10 +45,13 @@ export function detectExtractableType(filePath: string): ExtractableFileType | n
 // onOcrStart: goi 1 lan khi file bat dau roi vao nhanh OCR fallback (trang/slide
 // khong co text layer, hoac anh roi luon OCR truc tiep), de caller cap nhat
 // trang thai UI sang 'ocr_processing' truoc khi co ket qua cuoi cung.
+// sourceId (attachmentId hoac examFileId) chi can cho .doc/.ppt - dung lam
+// khoa cache cho file PDF chuyen doi tu Office.
 export async function extractText(
   filePath: string,
   type: ExtractableFileType,
-  onOcrStart?: () => void
+  onOcrStart?: () => void,
+  sourceId?: string
 ): Promise<ExtractedChunk[]> {
   switch (type) {
     case 'pdf':
@@ -52,5 +62,9 @@ export async function extractText(
       return extractPptxText(filePath, onOcrStart)
     case 'image':
       return extractImageText(filePath, onOcrStart)
+    case 'docLegacy':
+      return extractLegacyOfficeText(filePath, 'docx', sourceId, onOcrStart)
+    case 'pptLegacy':
+      return extractLegacyOfficeText(filePath, 'pptx', sourceId, onOcrStart)
   }
 }

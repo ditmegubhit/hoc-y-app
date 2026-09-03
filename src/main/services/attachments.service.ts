@@ -15,14 +15,22 @@ import type { Attachment, AttachmentFileType } from '../../shared/types/attachme
 // dung" de tranh gay hieu lam da lap chi muc tim kiem duoc.
 const MIN_USEFUL_TEXT_CHARS = 3
 
+// .doc/.ppt (Office 97-2003) duoc quy ve dung loai 'docx'/'pptx' - Word/
+// PowerPoint mo ca 2 dinh dang nhu nhau nen phan xem/chuyen PDF/mo tai vi
+// tri khong can biet su khac biet; chi buoc trich xuat text di duong rieng
+// (xem detectExtractableType -> 'docLegacy'/'pptLegacy').
 const SUPPORTED_EXTENSIONS: Record<string, AttachmentFileType> = {
   '.pdf': 'pdf',
+  '.doc': 'docx',
   '.docx': 'docx',
+  '.ppt': 'pptx',
   '.pptx': 'pptx',
   '.png': 'png',
   '.jpg': 'jpg',
   '.jpeg': 'jpeg'
 }
+
+const DOC_EXTENSIONS = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'png', 'jpg', 'jpeg']
 
 function notifyExtractionUpdated(attachmentId: string): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -30,16 +38,24 @@ function notifyExtractionUpdated(attachmentId: string): void {
   }
 }
 
-export async function pickAndAddAttachment(lessonId: string): Promise<Attachment | null> {
+export async function pickAndAddAttachment(lessonId: string): Promise<Attachment[]> {
   const result = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters: [
-      { name: 'Tài liệu học tập', extensions: ['pdf', 'docx', 'pptx', 'png', 'jpg', 'jpeg'] }
-    ]
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Tài liệu học tập', extensions: DOC_EXTENSIONS }]
   })
-  if (result.canceled || result.filePaths.length === 0) return null
+  if (result.canceled || result.filePaths.length === 0) return []
 
-  return addAttachmentFromPath(lessonId, result.filePaths[0])
+  // Them tuan tu - moi file tu spawn viec trich xuat rieng (fire-and-forget)
+  // nen khong can song song o day; 1 file loi khong lam hong ca lo.
+  const added: Attachment[] = []
+  for (const filePath of result.filePaths) {
+    try {
+      added.push(await addAttachmentFromPath(lessonId, filePath))
+    } catch (err) {
+      console.error('[attachments] không thêm được file:', filePath, err)
+    }
+  }
+  return added
 }
 
 export async function addAttachmentFromPath(
@@ -80,10 +96,15 @@ async function extractAndIndex(
   lessonId: string
 ): Promise<void> {
   try {
-    const chunks = await extractText(storedPath, type, () => {
-      attachmentsRepo.markAttachmentOcrProcessing(attachmentId)
-      notifyExtractionUpdated(attachmentId)
-    })
+    const chunks = await extractText(
+      storedPath,
+      type,
+      () => {
+        attachmentsRepo.markAttachmentOcrProcessing(attachmentId)
+        notifyExtractionUpdated(attachmentId)
+      },
+      attachmentId
+    )
     const text = chunks.map((c) => c.text).join('\n\n')
     const status = text.trim().length >= MIN_USEFUL_TEXT_CHARS ? 'done' : 'done_empty'
     attachmentsRepo.updateAttachmentExtraction(attachmentId, status, text)
@@ -185,9 +206,7 @@ function syncAttachmentById(id: string): void {
 
 // ---------- Lien ket file goc cho cac file da them tu truoc ----------
 
-const LINK_FILTERS = [
-  { name: 'Tài liệu học tập', extensions: ['pdf', 'docx', 'pptx', 'png', 'jpg', 'jpeg'] }
-]
+const LINK_FILTERS = [{ name: 'Tài liệu học tập', extensions: DOC_EXTENSIONS }]
 
 export async function pickAndLinkAttachmentSource(
   attachmentId: string

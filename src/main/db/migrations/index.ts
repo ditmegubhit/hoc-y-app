@@ -12,6 +12,7 @@ import * as m011 from './011_attachment_source'
 import * as m012 from './012_app_settings'
 import * as m013 from './013_quiz_learning'
 import * as m014 from './014_question_marked_good'
+import * as m015 from './015_legacy_office_formats'
 
 export interface Migration {
   id: string
@@ -34,5 +35,6 @@ export const migrations: Migration[] = [
   m011,
   m012,
   m013,
-  m014
+  m014,
+  m015
 ]

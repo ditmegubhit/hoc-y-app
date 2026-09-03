@@ -88,7 +88,15 @@ function AttachmentsWidget({
           type="button"
           className="btn-secondary"
           disabled={addAttachment.isPending}
-          onClick={() => addAttachment.mutate()}
+          title="Có thể chọn nhiều file cùng lúc"
+          onClick={() => {
+            setBulkNotice(null)
+            addAttachment.mutate(undefined, {
+              onSuccess: (added) => {
+                if (added.length > 1) setBulkNotice(`Đã thêm ${added.length} file.`)
+              }
+            })
+          }}
         >
           <Plus size={14} /> Thêm file (PDF / Word / PowerPoint / Ảnh)
         </button>

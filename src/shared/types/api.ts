@@ -49,7 +49,7 @@ export interface AppApi {
   }
   attachments: {
     listByLesson: (lessonId: string) => Promise<Attachment[]>
-    add: (lessonId: string) => Promise<Attachment | null>
+    add: (lessonId: string) => Promise<Attachment[]>
     remove: (id: string) => Promise<void>
     reextract: (id: string) => Promise<void>
     linkSource: (id: string) => Promise<Attachment | null>

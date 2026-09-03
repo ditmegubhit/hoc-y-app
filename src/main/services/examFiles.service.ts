@@ -1,20 +1,23 @@
 import { dialog } from 'electron'
 import { extname } from 'node:path'
 import { storeExamFile } from './fileStorage.service'
-import { extractText } from './textExtraction'
+import { extractText, detectExtractableType } from './textExtraction'
 import * as examFilesRepo from '../db/repositories/examFiles.repo'
 import type { ExamFile, ExamFileType } from '../../shared/types/examFile'
 
+// .doc/.ppt quy ve 'docx'/'pptx' - xem ghi chu trong attachments.service.ts.
 const SUPPORTED: Record<string, ExamFileType> = {
   '.pdf': 'pdf',
+  '.doc': 'docx',
   '.docx': 'docx',
+  '.ppt': 'pptx',
   '.pptx': 'pptx'
 }
 
 export async function pickAndAddExamFile(): Promise<ExamFile | null> {
   const result = await dialog.showOpenDialog({
     properties: ['openFile'],
-    filters: [{ name: 'Đề thi', extensions: ['pdf', 'docx', 'pptx'] }]
+    filters: [{ name: 'Đề thi', extensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx'] }]
   })
   if (result.canceled || result.filePaths.length === 0) return null
 
@@ -31,14 +34,19 @@ export async function pickAndAddExamFile(): Promise<ExamFile | null> {
     fileSizeBytes: stored.fileSizeBytes
   })
 
-  void extractAndSave(examFile.id, stored.storedPath, fileType)
+  void extractAndSave(examFile.id, stored.storedPath)
 
   return examFile
 }
 
-async function extractAndSave(id: string, storedPath: string, type: ExamFileType): Promise<void> {
+async function extractAndSave(id: string, storedPath: string): Promise<void> {
   try {
-    const chunks = await extractText(storedPath, type)
+    const type = detectExtractableType(storedPath)
+    if (!type) {
+      examFilesRepo.updateExtraction(id, 'failed', null)
+      return
+    }
+    const chunks = await extractText(storedPath, type, undefined, id)
     const text = chunks.map((c) => c.text).join('\n\n')
     examFilesRepo.updateExtraction(id, 'done', text)
   } catch (err) {
