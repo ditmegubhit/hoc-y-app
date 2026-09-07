@@ -1,12 +1,18 @@
 import { useState } from 'react'
 import type { QuizFeedbackMode } from '@shared/types/quiz'
 
+export interface QuizStartOptions {
+  numQuestions: number
+  feedbackMode: QuizFeedbackMode
+  timeLimitSeconds: number | null
+}
+
 interface QuizSetupScreenProps {
   availableCount: number
   isLoading: boolean
   starting: boolean
   errorMessage: string | null
-  onStart: (opts: { numQuestions: number; feedbackMode: QuizFeedbackMode }) => void
+  onStart: (opts: QuizStartOptions) => void
   onExit: () => void
 }
 
@@ -19,7 +25,7 @@ const MODE_INFO: { mode: QuizFeedbackMode; label: string; desc: string }[] = [
   {
     mode: 'exam',
     label: 'Thi thử',
-    desc: 'Làm hết rồi mới chấm điểm, sau đó xem lại câu sai.'
+    desc: 'Làm hết rồi mới chấm điểm, có đồng hồ đếm ngược nếu đặt giới hạn.'
   }
 ]
 
@@ -34,6 +40,7 @@ function QuizSetupScreen({
   const defaultCount = Math.min(availableCount, 10)
   const [numQuestions, setNumQuestions] = useState(defaultCount)
   const [feedbackMode, setFeedbackMode] = useState<QuizFeedbackMode>('practice')
+  const [limitMinutes, setLimitMinutes] = useState('')
 
   if (isLoading) {
     return <p className="quiz-setup-loading">Đang tải câu hỏi...</p>
@@ -45,7 +52,7 @@ function QuizSetupScreen({
         <p className="quiz-ai-warning">
           Chưa có câu hỏi nào để làm bài. Hãy dùng &quot;Soạn câu hỏi&quot; để tạo trước.
         </p>
-        <div className="quiz-play-nav">
+        <div className="lms-quiz-footer">
           <button type="button" className="btn-secondary" onClick={onExit}>
             Thoát
           </button>
@@ -55,9 +62,14 @@ function QuizSetupScreen({
   }
 
   const clampedCount = Math.max(1, Math.min(numQuestions || 1, availableCount))
+  const minutes = Number(limitMinutes)
+  const timeLimitSeconds =
+    feedbackMode === 'exam' && Number.isFinite(minutes) && minutes > 0
+      ? Math.round(minutes * 60)
+      : null
 
   return (
-    <div className="quiz-setup">
+    <div className="quiz-setup lms-setup">
       <p className="quiz-setup-available">
         Có <strong>{availableCount}</strong> câu hỏi trong phạm vi này.
       </p>
@@ -87,9 +99,22 @@ function QuizSetupScreen({
         ))}
       </div>
 
+      {feedbackMode === 'exam' && (
+        <label className="quiz-setup-count">
+          Giới hạn thời gian (phút):
+          <input
+            type="number"
+            min={1}
+            placeholder="để trống nếu không giới hạn"
+            value={limitMinutes}
+            onChange={(e) => setLimitMinutes(e.target.value)}
+          />
+        </label>
+      )}
+
       {errorMessage && <p className="quiz-ai-error">{errorMessage}</p>}
 
-      <div className="quiz-play-nav">
+      <div className="lms-quiz-footer">
         <button type="button" className="btn-secondary" onClick={onExit}>
           Thoát
         </button>
@@ -97,7 +122,7 @@ function QuizSetupScreen({
           type="button"
           className="btn-primary"
           disabled={starting}
-          onClick={() => onStart({ numQuestions: clampedCount, feedbackMode })}
+          onClick={() => onStart({ numQuestions: clampedCount, feedbackMode, timeLimitSeconds })}
         >
           {starting ? 'Đang chuẩn bị...' : 'Bắt đầu'}
         </button>

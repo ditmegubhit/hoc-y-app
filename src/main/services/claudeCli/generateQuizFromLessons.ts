@@ -90,8 +90,22 @@ export interface GenerateQuizParams {
 }
 
 // Toi da so LOI GOI sinh (goc + bu) trong 1 lan bam. Ollama moi vong ~3 phut
-// tren iGPU nen chan chat - vong 1 da xin du buffer roi.
-const MAX_ROUNDS_BY_PROVIDER: Record<AiProvider, number> = { claude: 5, ollama: 3 }
+// tren iGPU nen chan chat - vong 1 da xin du buffer roi. Claude chia lo nho (xem
+// CLAUDE_BATCH) nen can nhieu vong hon cho cac de xin nhieu cau.
+const MAX_ROUNDS_BY_PROVIDER: Record<AiProvider, number> = { claude: 12, ollama: 3 }
+
+// So cau toi da xin trong MOT loi goi CLI Claude. Xin ca chuc cau/loi goi khien
+// 1 loi goi keo dai qua timeout (nguon 120k ky tu + sinh 40+ cau ~3-5 phut) ->
+// bi giet, mat trang. Chia lo nho: moi loi goi ~30-60s, loi giua chung van giu
+// duoc cac cau da sinh. Noi dung nguon on dinh nen cac loi goi sau dung lai
+// prompt-cache, khong ton nhieu token hon.
+const CLAUDE_BATCH = 12
+
+// Nguong so trung ngu nghia khi SINH (long hon mac dinh 0.72/0.88): 2 cau cung
+// chu de nhung hoi diem kien thuc khac nhau khong bi coi la trung -> khai thac
+// duoc nhieu goc hon tu cung mot doan tai lieu. Luot "ra soat" cuoi cung van
+// dung nguong chat de bo cau that su trung.
+const GEN_DEDUPE = { threshold: 0.8, embedThreshold: 0.91 }
 
 function toContent(q: DraftQuestion): QuestionDraftContent {
   return { questionText: q.questionText, options: q.options, explanation: q.explanation }
@@ -152,6 +166,7 @@ async function generateOneRound(params: {
   ask: number
   avoid: string[]
   round: number
+  windowSeed: number
   phase: QuizGenProgress['phase']
   embedder: Embedder | undefined
   target: number
@@ -168,7 +183,11 @@ async function generateOneRound(params: {
     numQuestions: params.ask,
     existingQuestions: params.avoid,
     provider,
-    maxContentChars: tuning?.maxContentChars
+    maxContentChars: tuning?.maxContentChars,
+    // Xoay cua so noi dung theo vong + so cau da co -> nguon dai duoc phu het
+    // qua nhieu vong va nhieu lan bam "Soan".
+    round: params.round,
+    windowSeed: params.windowSeed
   })
 
   const systemPrompt = isOllama
@@ -194,7 +213,7 @@ async function generateOneRound(params: {
     prompt,
     systemPrompt,
     jsonSchema: isOllama ? ollamaQuizJsonSchema : quizFromLessonJsonSchema,
-    timeoutMs: isOllama ? 600_000 : 180_000,
+    timeoutMs: isOllama ? 600_000 : 300_000,
     numCtx: tuning?.numCtx,
     onPartial: isOllama
       ? (full): void =>
@@ -238,7 +257,8 @@ async function generateOneRound(params: {
   const { kept: sane } = sanitizeQuestions(raw)
   const { kept: deduped } = dedupeQuestions(sane, params.avoid)
   const { kept: fresh } = await filterSemanticDuplicates(deduped, params.avoid, {
-    embedder: params.embedder
+    embedder: params.embedder,
+    ...GEN_DEDUPE
   })
   return { fresh, rawCount: raw.length, truncated }
 }
@@ -265,6 +285,9 @@ export async function generateQuizFromContent(
   const maxRounds = MAX_ROUNDS_BY_PROVIDER[provider]
   const existing = params.existingQuestionTexts ?? []
   const embedder = await maybeOllamaEmbedder()
+  // Bai da co nhieu cau -> bat dau tu cua so noi dung sau hon (uoc ~8 cau/cua so)
+  // de bam "Soan" nhieu lan phu dan het tai lieu thay vi lap lai phan dau.
+  const windowSeed = Math.floor(existing.length / 8)
 
   const accepted: DraftQuestion[] = []
   const avoid = [...existing]
@@ -275,22 +298,29 @@ export async function generateQuizFromContent(
 
   // Vong 1 xin DU them mot it de bu cho cau se bi loai (hong/trung) -> thuong
   // khong phai chay vong "sinh bu" (moi vong Ollama ~3 phut). Ollama cham nen
-  // dem it thoi; Claude re nen dem thoai mai hon.
+  // dem it thoi; Claude chia lo CLAUDE_BATCH cau/loi goi de moi loi goi nhanh.
+  const perCallCap = provider === 'ollama' ? 16 : CLAUDE_BATCH
   const bufferedFirstAsk =
     provider === 'ollama'
-      ? Math.min(target + 4, 20)
-      : Math.min(Math.ceil(target * 1.3) + 1, 55)
+      ? // 7B hay bi cat JSON khi sinh nhieu cau 1 luot -> tran 16.
+        Math.min(target + 3, 16)
+      : Math.min(target + 3, CLAUDE_BATCH)
+
+  // So vong lien tiep khong ra cau moi nao. Chi coi nguon la "can" khi da thu
+  // vai vong (moi vong xoay sang cua so noi dung khac) van khong them duoc gi.
+  let emptyStreak = 0
 
   while (accepted.length < target && round < maxRounds) {
     round += 1
     const need = target - accepted.length
-    const ask = round === 1 ? bufferedFirstAsk : Math.min(target, need + 2)
+    const ask = round === 1 ? bufferedFirstAsk : Math.min(perCallCap, target, need + 2)
 
     const res = await generateOneRound({
       base: params,
       ask,
       avoid,
       round,
+      windowSeed,
       phase: round === 1 ? 'generating' : 'topping_up',
       embedder,
       target,
@@ -313,8 +343,12 @@ export async function generateQuizFromContent(
       avoid.unshift(q.questionText)
     }
 
-    // Vong nay khong ra cau moi nao (sau vong 1) -> nguon coi nhu can, dung.
-    if (res.fresh.length === 0 && round >= 2) break
+    emptyStreak = res.fresh.length === 0 ? emptyStreak + 1 : 0
+    // Dung khi: 3 vong lien tiep khong ra cau moi (nguon that su da can) - VOI
+    // dieu kien noi dung khong bi cat cua so (neu bi cat, cua so sau co the con
+    // nhieu -> chiu kho thu het maxRounds).
+    const contentWindowed = res.truncated
+    if (emptyStreak >= (contentWindowed ? 4 : 2) && round >= 3) break
   }
 
   if (accepted.length === 0) {
@@ -337,12 +371,12 @@ export async function generateQuizFromContent(
   const cleanAndSet = async (drafts: DraftQuestion[]): Promise<void> => {
     const { kept: rs } = sanitizeQuestions(drafts)
     const { kept: rd } = dedupeQuestions(rs, existing)
-    const { kept: rf } = await filterSemanticDuplicates(rd, existing, { embedder })
+    const { kept: rf } = await filterSemanticDuplicates(rd, existing, { embedder, ...GEN_DEDUPE })
     finalQuestions = rf.length > 0 ? rf : accepted
   }
 
   if (refineProvider === 'claude' || shouldAutoRefine(provider)) {
-    // 1 loi goi ra soat & sua (khong chia lo -> nhanh hon). Voi Ollama soan +
+    // Ra soat & sua theo lo (xem refineGeneratedQuestions). Voi Ollama soan +
     // Claude sua: ghep cap "goc -> da sua" bang do giong nhau tu vung roi luu
     // lam vi du few-shot cho Ollama hoc.
     params.onProgress?.({ phase: 'refining', round, target, kept: accepted.length })
@@ -352,7 +386,16 @@ export async function generateQuizFromContent(
       questions: accepted,
       existingQuestionTexts: existing,
       provider: refineProvider,
-      scope: params.scope
+      scope: params.scope,
+      onChunk: (done, total) =>
+        params.onProgress?.({
+          phase: 'refining',
+          round,
+          target,
+          kept: accepted.length,
+          refineDone: done,
+          refineTotal: total
+        })
     })
     await cleanAndSet(refined)
 
@@ -374,26 +417,30 @@ export async function generateQuizFromContent(
     // o tren.
     const avoid2 = [...finalQuestions.map((q) => q.questionText), ...existing]
     let extraRound = round
+    let extraEmptyStreak = 0
     while (finalQuestions.length < target && extraRound < maxRounds) {
       extraRound += 1
       const need = target - finalQuestions.length
       const res = await generateOneRound({
         base: params,
-        ask: Math.min(target, need + 2),
+        ask: Math.min(perCallCap, target, need + 2),
         avoid: avoid2,
         round: extraRound,
+        windowSeed,
         phase: 'topping_up',
         embedder,
         target,
         keptSoFar: finalQuestions.length
       })
       truncatedAny ||= res.truncated
-      if (res.error || res.fresh.length === 0) break
+      if (res.error) break
       for (const q of res.fresh) {
         if (finalQuestions.length >= target) break
         finalQuestions.push(q)
         avoid2.unshift(q.questionText)
       }
+      extraEmptyStreak = res.fresh.length === 0 ? extraEmptyStreak + 1 : 0
+      if (extraEmptyStreak >= (res.truncated ? 3 : 2)) break
     }
   }
 

@@ -70,7 +70,7 @@ function QuizGeneratePanel({ scope }: QuizGeneratePanelProps): React.JSX.Element
   const availabilityQuery = useAiAvailability()
   const ollamaQuery = useOllamaStatus()
   const settingsQuery = useAiSettings()
-  const { phase, outcome, progress, generate } = useQuizGeneration(scope)
+  const { phase, outcome, progress, percent, generate } = useQuizGeneration(scope)
 
   const cliStatus = availabilityQuery.data?.status
   const ollamaReady = ollamaQuery.data?.status === 'ready'
@@ -130,9 +130,15 @@ function QuizGeneratePanel({ scope }: QuizGeneratePanelProps): React.JSX.Element
         </label>
       </div>
 
-      {busy ? (
-        <p className="quiz-generate-hint">{runLabel}</p>
-      ) : (
+      {busy || percent != null ? (
+        <p className="quiz-generate-hint quiz-generate-hint--row">
+          <span>{busy ? runLabel : 'Đã xong'}</span>
+          {percent != null && (
+            <span className="quiz-generate-pct">{percent.toFixed(3)}%</span>
+          )}
+        </p>
+      ) : null}
+      {!busy && percent == null ? (
         <div className="quiz-ai-engine-buttons">
           <button
             type="button"
@@ -160,7 +166,7 @@ function QuizGeneratePanel({ scope }: QuizGeneratePanelProps): React.JSX.Element
             <Cloud size={14} /> Soạn bằng Claude <span className="quiz-ai-cost">tốn token</span>
           </button>
         </div>
-      )}
+      ) : null}
 
       {!busy && !ollamaReady && ollamaWarn && (
         <p className="quiz-ai-warning">{ollamaWarn}</p>
@@ -180,7 +186,8 @@ function QuizGeneratePanel({ scope }: QuizGeneratePanelProps): React.JSX.Element
       {outcome?.error && <p className="quiz-ai-error">{outcome.error}</p>}
       {outcome?.truncated && (
         <p className="quiz-ai-warning">
-          Nội dung khá dài nên đã được rút gọn trước khi gửi cho AI.
+          Tài liệu dài nên mỗi lượt AI chỉ đọc một phần. Bấm &quot;Soạn&quot; thêm vài
+          lần nữa để phủ hết nội dung — mỗi lượt sẽ hỏi sang phần khác.
         </p>
       )}
       {outcome && !outcome.error && (
@@ -188,7 +195,7 @@ function QuizGeneratePanel({ scope }: QuizGeneratePanelProps): React.JSX.Element
           Đã tạo và lưu {outcome.savedCount} câu hỏi mới
           {outcome.duplicates > 0 && ` (đã loại ${outcome.duplicates} câu hỏng/trùng)`}.
           {outcome.shortfall > 0 &&
-            ` Còn thiếu ${outcome.shortfall} câu — nguồn tài liệu chưa đủ nội dung khác để soạn thêm.`}{' '}
+            ` Lượt này AI chưa rút thêm được ${outcome.shortfall} câu khác biệt — bấm "Soạn" lần nữa để lấy tiếp, hoặc chọn thêm bài/tài liệu.`}{' '}
           Các câu mới được tô nền xanh trong &quot;Ngân hàng câu hỏi&quot; cho tới lần soạn kế tiếp.
         </p>
       )}

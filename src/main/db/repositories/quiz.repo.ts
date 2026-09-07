@@ -23,6 +23,7 @@ interface QuizRow {
   topic_id: string | null
   lesson_ids_json: string
   feedback_mode: string
+  time_limit_seconds: number | null
   question_count: number
   created_at: string
 }
@@ -43,6 +44,7 @@ interface QuizAttemptRow {
   feedback_mode: string
   started_at: string
   submitted_at: string | null
+  duration_seconds: number | null
   correct_count: number | null
   total_count: number | null
   score: number | null
@@ -54,6 +56,7 @@ interface QuizAttemptAnswerRow {
   quiz_question_id: string
   selected_option_id: string | null
   is_correct: number | null
+  flagged: number
 }
 
 function correctOptionId(options: QuestionOption[]): string {
@@ -108,8 +111,8 @@ export function createQuiz(input: CreateQuizInput): CreatedQuiz {
 
   const quizId = randomUUID()
   const insertQuiz = db.prepare(
-    `INSERT INTO quizzes (id, title, scope_type, lesson_id, topic_id, lesson_ids_json, feedback_mode, question_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO quizzes (id, title, scope_type, lesson_id, topic_id, lesson_ids_json, feedback_mode, time_limit_seconds, question_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
   const insertQuizQuestion = db.prepare(
     `INSERT INTO quiz_questions (id, quiz_id, question_id, sort_order, question_text, options_json, explanation)
@@ -126,6 +129,7 @@ export function createQuiz(input: CreateQuizInput): CreatedQuiz {
       input.topicId ?? null,
       JSON.stringify(input.lessonIds),
       input.feedbackMode,
+      input.timeLimitSeconds ?? null,
       picked.length
     )
     picked.forEach((q, idx) => {
@@ -151,6 +155,7 @@ export function createQuiz(input: CreateQuizInput): CreatedQuiz {
   return {
     quizId,
     feedbackMode: input.feedbackMode as QuizFeedbackMode,
+    timeLimitSeconds: input.timeLimitSeconds ?? null,
     questions: rows.map(toPlayable)
   }
 }
@@ -167,7 +172,10 @@ function buildReview(params: {
   attempt: QuizAttemptRow
   quiz: QuizRow
   snapshotRows: QuizQuestionRow[]
-  answerByQuestion: Map<string, { selectedOptionId: string | null; isCorrect: boolean }>
+  answerByQuestion: Map<
+    string,
+    { selectedOptionId: string | null; isCorrect: boolean; flagged: boolean }
+  >
 }): AttemptReview {
   const { attempt, quiz, snapshotRows, answerByQuestion } = params
   const answers: AttemptAnswerReview[] = snapshotRows.map((row) => {
@@ -180,7 +188,8 @@ function buildReview(params: {
       explanation: row.explanation,
       selectedOptionId: stored?.selectedOptionId ?? null,
       correctOptionId: correctOptionId(options),
-      isCorrect: stored?.isCorrect ?? false
+      isCorrect: stored?.isCorrect ?? false,
+      flagged: stored?.flagged ?? false
     }
   })
 
@@ -192,6 +201,8 @@ function buildReview(params: {
     correctCount: attempt.correct_count ?? 0,
     totalCount: attempt.total_count ?? snapshotRows.length,
     score: attempt.score ?? 0,
+    durationSeconds: attempt.duration_seconds ?? null,
+    timeLimitSeconds: quiz.time_limit_seconds ?? null,
     startedAt: attempt.started_at,
     submittedAt: attempt.submitted_at ?? attempt.started_at,
     answers
@@ -214,14 +225,20 @@ export function submitAttempt(input: SubmitAttemptInput): AttemptReview {
 
   const result = computeAttemptResult(snapshot, input.answers)
 
+  // Flag phai giu ca cho cau bo trong -> lay tu input.answers, khong phai
+  // result.perAnswer (khong mang flag).
+  const flagByQuestion = new Map(
+    input.answers.map((a) => [a.quizQuestionId, a.flagged === true])
+  )
+
   const attemptId = randomUUID()
   const insertAttempt = db.prepare(
-    `INSERT INTO quiz_attempts (id, quiz_id, feedback_mode, submitted_at, correct_count, total_count, score)
-     VALUES (?, ?, ?, datetime('now'), ?, ?, ?)`
+    `INSERT INTO quiz_attempts (id, quiz_id, feedback_mode, submitted_at, duration_seconds, correct_count, total_count, score)
+     VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?)`
   )
   const insertAnswer = db.prepare(
-    `INSERT INTO quiz_attempt_answers (id, attempt_id, quiz_question_id, selected_option_id, is_correct)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO quiz_attempt_answers (id, attempt_id, quiz_question_id, selected_option_id, is_correct, flagged)
+     VALUES (?, ?, ?, ?, ?, ?)`
   )
 
   const tx = db.transaction(() => {
@@ -229,6 +246,7 @@ export function submitAttempt(input: SubmitAttemptInput): AttemptReview {
       attemptId,
       input.quizId,
       input.feedbackMode,
+      input.durationSeconds ?? null,
       result.correctCount,
       result.totalCount,
       result.score
@@ -239,7 +257,8 @@ export function submitAttempt(input: SubmitAttemptInput): AttemptReview {
         attemptId,
         a.quizQuestionId,
         a.selectedOptionId,
-        a.isCorrect ? 1 : 0
+        a.isCorrect ? 1 : 0,
+        flagByQuestion.get(a.quizQuestionId) ? 1 : 0
       )
     }
   })
@@ -253,7 +272,11 @@ export function submitAttempt(input: SubmitAttemptInput): AttemptReview {
   const answerByQuestion = new Map(
     result.perAnswer.map((a) => [
       a.quizQuestionId,
-      { selectedOptionId: a.selectedOptionId, isCorrect: a.isCorrect }
+      {
+        selectedOptionId: a.selectedOptionId,
+        isCorrect: a.isCorrect,
+        flagged: flagByQuestion.get(a.quizQuestionId) === true
+      }
     ])
   )
 
@@ -280,7 +303,11 @@ export function getAttemptReview(attemptId: string): AttemptReview | null {
   const answerByQuestion = new Map(
     answerRows.map((r) => [
       r.quiz_question_id,
-      { selectedOptionId: r.selected_option_id, isCorrect: r.is_correct === 1 }
+      {
+        selectedOptionId: r.selected_option_id,
+        isCorrect: r.is_correct === 1,
+        flagged: r.flagged === 1
+      }
     ])
   )
 
@@ -292,7 +319,8 @@ export function getAttemptReview(attemptId: string): AttemptReview | null {
 const ATTEMPT_SUMMARY_SELECT = `
   SELECT a.id AS attemptId, a.quiz_id AS quizId, q.title AS title, q.scope_type AS scopeType,
          a.feedback_mode AS feedbackMode, a.correct_count AS correctCount,
-         a.total_count AS totalCount, a.score AS score, a.submitted_at AS submittedAt
+         a.total_count AS totalCount, a.score AS score, a.duration_seconds AS durationSeconds,
+         a.submitted_at AS submittedAt
   FROM quiz_attempts a
   JOIN quizzes q ON q.id = a.quiz_id
 `
@@ -306,6 +334,7 @@ interface AttemptSummaryRow {
   correctCount: number
   totalCount: number
   score: number
+  durationSeconds: number | null
   submittedAt: string
 }
 
@@ -319,6 +348,7 @@ function mapSummary(row: AttemptSummaryRow): QuizAttemptSummary {
     correctCount: row.correctCount,
     totalCount: row.totalCount,
     score: row.score,
+    durationSeconds: row.durationSeconds ?? null,
     submittedAt: row.submittedAt
   }
 }

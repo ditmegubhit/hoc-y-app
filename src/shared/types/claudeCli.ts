@@ -27,6 +27,9 @@ export interface QuizGenProgress {
   kept: number
   // So cau model dang viet ra trong vong hien tai (chi khi Ollama stream).
   streaming?: number
+  // Tien do luot ra soat (phase === 'refining'): da xong `refineDone`/`refineTotal` lo.
+  refineDone?: number
+  refineTotal?: number
   // Khoa pham vi (renderer gan de dinh tuyen event ve dung o soan). Main chi
   // echo lai, khong dung.
   key?: string

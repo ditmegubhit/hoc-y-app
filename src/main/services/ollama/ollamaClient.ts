@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { request as httpRequest } from 'node:http'
 import { app } from 'electron'
 import * as appSettingsRepo from '../../db/repositories/appSettings.repo'
+import { extractArrayObjects } from '../ai/streamingJsonParser'
 import type { OllamaStatus } from '../../../shared/types/ai'
 import type { ClaudeCliResult } from '../claudeCli/claudeCliClient'
 
@@ -201,7 +202,9 @@ export async function runOllamaJson(params: {
       repeat_penalty: 1.15,
       // num_ctx co dinh (7168) -> Ollama khong nap lai model khi user bat/tat toggle "hoc".
       num_ctx: params.numCtx ?? 7168,
-      num_predict: 2048
+      // Du cho ~14-16 cau JSON day du. Neu van bi cat, khoi salvage o duoi vot
+      // lai cac cau da hoan chinh thay vi bao loi.
+      num_predict: 3072
     }
   })
 
@@ -272,6 +275,12 @@ export async function runOllamaJson(params: {
     try {
       return { ok: true, structuredOutput: JSON.parse(content), resultText: content }
     } catch {
+      // JSON bi cat giua chung (thuong do cham num_predict) -> vot lay cac object
+      // cau DA HOAN CHINH thay vi bao loi + mat trang.
+      const salvaged = extractArrayObjects(content, 'questions')
+      if (salvaged.length > 0) {
+        return { ok: true, structuredOutput: { questions: salvaged }, resultText: content }
+      }
       return {
         ok: false,
         errorMessage: `Ollama trả về JSON không hợp lệ: ${content.slice(0, 300)}`

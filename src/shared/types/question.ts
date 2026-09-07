@@ -45,6 +45,8 @@ export interface Question extends DraftQuestion {
   topicId: string | null
   status: QuestionStatus
   markedGood: boolean
+  // Cau do dot "chay thu" (smoke test) sinh ra - hien mau do trong ngan hang.
+  isTest: boolean
   createdAt: string
   updatedAt: string
 }

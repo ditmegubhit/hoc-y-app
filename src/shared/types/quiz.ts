@@ -35,6 +35,8 @@ export interface CreateQuizInput {
   topicId?: string | null
   lessonIds: string[]
   feedbackMode: QuizFeedbackMode
+  // Chi che do "Thi thu"; null/khong co = khong gioi han thoi gian.
+  timeLimitSeconds?: number | null
   questionIds: string[] // tap con question_bank.id, da theo thu tu choi
   title: string
 }
@@ -42,17 +44,22 @@ export interface CreateQuizInput {
 export interface CreatedQuiz {
   quizId: string
   feedbackMode: QuizFeedbackMode
+  timeLimitSeconds: number | null
   questions: PlayableQuestion[]
 }
 
 export interface AttemptAnswerInput {
   quizQuestionId: string
   selectedOptionId: string | null
+  // Cau duoc danh dau de xem lai (mac dinh false).
+  flagged?: boolean
 }
 
 export interface SubmitAttemptInput {
   quizId: string
   feedbackMode: QuizFeedbackMode
+  // Tong thoi gian lam bai (giay, dong ho phia client); null neu khong ro.
+  durationSeconds: number | null
   answers: AttemptAnswerInput[]
 }
 
@@ -64,6 +71,7 @@ export interface AttemptAnswerReview {
   selectedOptionId: string | null
   correctOptionId: string
   isCorrect: boolean
+  flagged: boolean
 }
 
 export interface AttemptReview {
@@ -74,6 +82,8 @@ export interface AttemptReview {
   correctCount: number
   totalCount: number
   score: number // 0..10, 1 chu so thap phan
+  durationSeconds: number | null
+  timeLimitSeconds: number | null
   startedAt: string
   submittedAt: string
   answers: AttemptAnswerReview[]
@@ -88,5 +98,6 @@ export interface QuizAttemptSummary {
   correctCount: number
   totalCount: number
   score: number
+  durationSeconds: number | null
   submittedAt: string
 }

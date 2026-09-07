@@ -1,8 +1,15 @@
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AiProvider, AiSettings } from '@shared/types/ai'
+import type { QuizGenProgress } from '@shared/types/claudeCli'
 import type { LearningExampleInput, UpdateQuestionInput } from '@shared/types/question'
 import type { CreateQuizInput, SubmitAttemptInput } from '@shared/types/quiz'
-import { useQuizGenerationStore } from '@renderer/stores/quizGenerationStore'
+import { milestonePercent, softCap, type GenDisplayPhase } from '@shared/quiz/generationPercent'
+import {
+  useQuizGenerationStore,
+  type GenOutcome,
+  type GenPhase
+} from '@renderer/stores/quizGenerationStore'
 import { useRecentQuestionsStore } from '@renderer/stores/recentQuestionsStore'
 
 export type QuizScope =
@@ -112,6 +119,67 @@ export interface GenerateOptions {
   refineWithClaude?: boolean
 }
 
+// Phan tram "toan bo cong viec" hien thi o dong tien do. Cac su kien tien do chi
+// ban theo moc roi rac (dau moi lo, moi lo ra soat) nen o day ease tiem can toi
+// tran giua 2 su kien -> con so nhich lien tuc, luon don dieu tang. Tra null khi
+// khong chay (tru ~1s "chop 100%" sau khi xong khong loi).
+function useEasedGenerationPercent(
+  phase: GenPhase,
+  progress: QuizGenProgress | null,
+  outcome: GenOutcome | null
+): number | null {
+  const [display, setDisplay] = useState<number | null>(null)
+  const valueRef = useRef(0)
+  const liveRef = useRef<{ phase: GenPhase; progress: QuizGenProgress | null }>({ phase, progress })
+  liveRef.current = { phase, progress }
+  const outcomeRef = useRef(outcome)
+  outcomeRef.current = outcome
+  const prevPhaseRef = useRef<GenPhase>(phase)
+
+  useEffect(() => {
+    const prev = prevPhaseRef.current
+    prevPhaseRef.current = phase
+
+    if (phase === 'idle') {
+      const justFinishedOk = prev !== 'idle' && !!outcomeRef.current && !outcomeRef.current.error
+      if (justFinishedOk) {
+        valueRef.current = 100
+        setDisplay(100)
+        const t = setTimeout(() => {
+          valueRef.current = 0
+          setDisplay(null)
+        }, 1100)
+        return () => clearTimeout(t)
+      }
+      valueRef.current = 0
+      setDisplay(null)
+      return
+    }
+
+    let last = Date.now()
+    const id = setInterval(() => {
+      const now = Date.now()
+      const dt = Math.min(400, now - last)
+      last = now
+      const { phase: p, progress: pr } = liveRef.current
+      const dphase: GenDisplayPhase = p === 'saving' ? 'saving' : 'generating'
+      const floor = milestonePercent({ phase: dphase, progress: pr })
+      const cap = softCap({ phase: dphase, progress: pr })
+      let v = Math.max(valueRef.current, floor)
+      // ease tiem can cham (hang so thoi gian ~20s) toi `cap`. `cap` chi cao hon
+      // moc that ~30% quang duong con lai cua chang -> con so nhich lien tuc suot
+      // luc lo dang chay nhung khong phi len cuoi chang roi dung im.
+      v += (cap - v) * (1 - Math.exp(-0.00005 * dt))
+      if (v > cap) v = cap
+      valueRef.current = v
+      setDisplay(v)
+    }, 100)
+    return () => clearInterval(id)
+  }, [phase])
+
+  return display
+}
+
 // Sinh + luu chay ngoai vong doi component, khoa theo `quizScopeKey(scope)` de
 // khong lan trang thai giua cac bai hoc, va luu dung vao pham vi da bam luc do.
 export function useQuizGeneration(scope: QuizScope) {
@@ -120,6 +188,7 @@ export function useQuizGeneration(scope: QuizScope) {
   const phase = useQuizGenerationStore((s) => s.phase[key] ?? 'idle')
   const outcome = useQuizGenerationStore((s) => s.outcome[key] ?? null)
   const progress = useQuizGenerationStore((s) => s.progress[key] ?? null)
+  const percent = useEasedGenerationPercent(phase, progress, outcome)
 
   const generate = (
     numQuestions: number,
@@ -199,7 +268,7 @@ export function useQuizGeneration(scope: QuizScope) {
     })()
   }
 
-  return { phase, outcome, progress, generate }
+  return { phase, outcome, progress, percent, generate }
 }
 
 export function useDeleteQuestion(_scope: QuizScope) {

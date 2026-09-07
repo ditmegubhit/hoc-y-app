@@ -18,6 +18,7 @@ const createQuizSchema = z.object({
   topicId: z.string().nullable().optional(),
   lessonIds: z.array(z.string()),
   feedbackMode: z.enum(['practice', 'exam']),
+  timeLimitSeconds: z.number().int().positive().nullable().optional(),
   questionIds: z.array(z.string()).min(1),
   title: z.string().min(1)
 })
@@ -25,10 +26,12 @@ const createQuizSchema = z.object({
 const submitAttemptSchema = z.object({
   quizId: z.string(),
   feedbackMode: z.enum(['practice', 'exam']),
+  durationSeconds: z.number().int().nonnegative().nullable(),
   answers: z.array(
     z.object({
       quizQuestionId: z.string(),
-      selectedOptionId: z.string().nullable()
+      selectedOptionId: z.string().nullable(),
+      flagged: z.boolean().optional()
     })
   )
 })

@@ -21,6 +21,7 @@ interface QuestionRow {
   topic_id: string | null
   status: string
   marked_good: number
+  is_test: number
   created_at: string
   updated_at: string
 }
@@ -38,6 +39,7 @@ function mapQuestion(row: QuestionRow): Question {
     topicId: row.topic_id,
     status: row.status as QuestionStatus,
     markedGood: row.marked_good === 1,
+    isTest: row.is_test === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -56,11 +58,13 @@ export function saveDraftQuestions(params: {
   generator?: QuestionGenerator
   lessonId: string | null
   topicId: string | null
+  // Cau do dot "chay thu" sinh ra -> danh dau de hien mau do.
+  isTest?: boolean
 }): Question[] {
   const db = getDb()
   const insert = db.prepare(
-    `INSERT INTO question_bank (id, question_text, options_json, explanation, source, generator, lesson_id, topic_id, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft')`
+    `INSERT INTO question_bank (id, question_text, options_json, explanation, source, generator, lesson_id, topic_id, status, is_test)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)`
   )
   const ids: string[] = []
   const tx = db.transaction(() => {
@@ -74,7 +78,8 @@ export function saveDraftQuestions(params: {
         params.source,
         params.generator ?? null,
         params.lessonId,
-        params.topicId
+        params.topicId,
+        params.isTest ? 1 : 0
       )
       ids.push(id)
     }
@@ -88,13 +93,15 @@ export function saveDraftQuestionsFromLesson(params: {
   topicId: string
   questions: DraftQuestion[]
   generator?: QuestionGenerator
+  isTest?: boolean
 }): Question[] {
   return saveDraftQuestions({
     questions: params.questions,
     source: 'ai_generated_from_lesson',
     generator: params.generator,
     lessonId: params.lessonId,
-    topicId: params.topicId
+    topicId: params.topicId,
+    isTest: params.isTest
   })
 }
 

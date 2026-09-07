@@ -53,7 +53,7 @@ function QuestionLibraryItem({
     setMarkedGood(true)
   }
 
-  const cls = `quiz-library-item${isNew ? ' quiz-library-item--new' : ''}`
+  const cls = `quiz-library-item${question.isTest ? ' quiz-library-item--test' : isNew ? ' quiz-library-item--new' : ''}`
 
   if (editing) {
     return (
@@ -65,6 +65,7 @@ function QuestionLibraryItem({
 
   return (
     <div className={cls}>
+      {question.isTest && <span className="quiz-test-badge">CÂU TEST</span>}
       <p className="quiz-question-text">{question.questionText}</p>
       <ul className="quiz-option-list">
         {question.options.map((opt, idx) => (

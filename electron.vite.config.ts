@@ -4,7 +4,16 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        input: {
+          // App chinh + entry "chay thu" sinh cau hoi (npm run smoke).
+          index: resolve('src/main/index.ts'),
+          smoke: resolve('src/main/smoke.ts')
+        }
+      }
+    }
   },
   preload: {
     plugins: [externalizeDepsPlugin()]

@@ -40,6 +40,44 @@ function hasExactlyOneCorrect(q: DraftQuestion): boolean {
   return q.options.filter((o) => o.isCorrect).length === 1
 }
 
+// Chia lo cho luot rasoat sau khi sinh: nhoi ca chuc cau + toan bo nguon vao 1
+// loi goi Claude de vuot timeout (giong luot sinh). Lo nho ~8 cau: moi loi goi
+// nhanh, nguon on dinh nen dung lai prompt-cache. Lo hong -> giu nguyen lo do.
+const REFINE_CHUNK_BY_PROVIDER: Record<AiProvider, number> = { claude: 8, ollama: 99 }
+
+async function refineOneBatch(params: {
+  subjectTitle: string
+  contentPieces: ContentPiece[]
+  questions: PlainQuestion[]
+  existingQuestionTexts?: string[]
+  provider: AiProvider
+  fixExamplesBlock: string | null
+}): Promise<DraftQuestion[] | null> {
+  try {
+    const result = await runAiJson({
+      provider: params.provider,
+      prompt: buildRefinePrompt({
+        subjectTitle: params.subjectTitle,
+        contentPieces: params.contentPieces,
+        questions: params.questions,
+        existingQuestions: params.existingQuestionTexts,
+        provider: params.provider,
+        fixExamplesBlock: params.fixExamplesBlock
+      }),
+      jsonSchema: quizFromLessonJsonSchema,
+      timeoutMs: params.provider === 'ollama' ? 600_000 : 240_000
+    })
+    if (!result.ok) return null
+    const parsed = outSchema.safeParse(result.structuredOutput)
+    if (!parsed.success || parsed.data.questions.length === 0) return null
+
+    const refined = parsed.data.questions.map(toDraft).filter(hasExactlyOneCorrect)
+    return refined.length > 0 ? refined : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Luot "ra soat & sua" cho cau VUA SINH. Khong bao gio nem loi - that bai thi
  * tra lai `questions` nguyen ban (khong lam mat cau da sinh).
@@ -51,6 +89,8 @@ export async function refineGeneratedQuestions(params: {
   existingQuestionTexts?: string[]
   provider?: AiProvider
   scope?: { lessonIds?: string[]; topicId?: string | null }
+  // Bao tien do sau moi lo da ra soat xong (de UI hien phan tram).
+  onChunk?: (done: number, total: number) => void
 }): Promise<DraftQuestion[]> {
   if (params.questions.length === 0) return []
 
@@ -65,29 +105,28 @@ export async function refineGeneratedQuestions(params: {
           limit: 2
         })
       : null
-  try {
-    const result = await runAiJson({
-      provider,
-      prompt: buildRefinePrompt({
-        subjectTitle: params.subjectTitle,
-        contentPieces: params.contentPieces,
-        questions: params.questions,
-        existingQuestions: params.existingQuestionTexts,
-        provider,
-        fixExamplesBlock
-      }),
-      jsonSchema: quizFromLessonJsonSchema,
-      timeoutMs: provider === 'ollama' ? 600_000 : 180_000
-    })
-    if (!result.ok) return params.questions
-    const parsed = outSchema.safeParse(result.structuredOutput)
-    if (!parsed.success || parsed.data.questions.length === 0) return params.questions
 
-    const refined = parsed.data.questions.map(toDraft).filter(hasExactlyOneCorrect)
-    return refined.length > 0 ? refined : params.questions
-  } catch {
-    return params.questions
+  const groups = chunk(params.questions, REFINE_CHUNK_BY_PROVIDER[provider])
+  const out: DraftQuestion[] = []
+  let anyOk = false
+  for (let i = 0; i < groups.length; i++) {
+    const refined = await refineOneBatch({
+      subjectTitle: params.subjectTitle,
+      contentPieces: params.contentPieces,
+      questions: groups[i],
+      existingQuestionTexts: params.existingQuestionTexts,
+      provider,
+      fixExamplesBlock
+    })
+    if (refined) {
+      anyOk = true
+      out.push(...refined)
+    } else {
+      out.push(...groups[i]) // lo nay hong -> giu nguyen cau da sinh
+    }
+    params.onChunk?.(i + 1, groups.length)
   }
+  return anyOk ? out : params.questions
 }
 
 export interface ReviewExistingResult {
