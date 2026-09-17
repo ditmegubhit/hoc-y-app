@@ -12,6 +12,8 @@ extraResources:
     to: tessdata
   - from: resources/scripts
     to: scripts
+  - from: resources/paddleocr/PaddleOCR-json_v1.4.1
+    to: paddleocr
 asarUnpack:
   - '**/*.node'
 win:

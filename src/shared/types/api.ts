@@ -30,6 +30,17 @@ import type {
   QuizAttemptSummary,
   SubmitAttemptInput
 } from './quiz'
+import type {
+  AnatomyAttemptReview,
+  AnatomyLabelCandidate,
+  ConfirmAnatomyCandidateInput,
+  CreateManualCandidateInput,
+  StartAnatomyAttemptInput,
+  StartedAnatomyAttempt,
+  SubmitAnatomyAttemptInput,
+  UpdateAnatomyCandidateInput,
+  UpdateQuestionAnswerInput
+} from './anatomyQuiz'
 
 export interface AppApi {
   appVersion: string
@@ -139,5 +150,30 @@ export interface AppApi {
   }
   notes: {
     pickImage: () => Promise<{ mimeType: string; base64: string } | null>
+  }
+  anatomy: {
+    detectPage: (input: { attachmentId: string; pageNumber: number }) => Promise<AnatomyLabelCandidate[]>
+    detectAllPages: (input: { attachmentId: string }) => Promise<{ totalPages: number }>
+    onDetectAllPagesProgress: (
+      callback: (payload: { pageNumber: number; totalPages: number }) => void
+    ) => () => void
+    listCandidatesForPage: (input: {
+      attachmentId: string
+      pageNumber: number
+    }) => Promise<AnatomyLabelCandidate[]>
+    updateCandidate: (input: UpdateAnatomyCandidateInput) => Promise<void>
+    createManualCandidate: (input: CreateManualCandidateInput) => Promise<string>
+    confirmCandidate: (input: ConfirmAnatomyCandidateInput) => Promise<string>
+    updateQuestionAnswer: (input: UpdateQuestionAnswerInput) => Promise<void>
+    rejectCandidate: (candidateId: string) => Promise<void>
+    deleteCandidate: (candidateId: string) => Promise<void>
+    countConfirmedForAttachment: (attachmentId: string) => Promise<number>
+    checkAnswer: (input: {
+      questionId: string
+      submittedText: string
+    }) => Promise<{ isCorrect: boolean; correctAnswerText: string }>
+    startAttempt: (input: StartAnatomyAttemptInput) => Promise<StartedAnatomyAttempt>
+    submitAttempt: (input: SubmitAnatomyAttemptInput) => Promise<AnatomyAttemptReview>
+    getAttemptReview: (attemptId: string) => Promise<AnatomyAttemptReview | null>
   }
 }

@@ -15,6 +15,8 @@ import * as m014 from './014_question_marked_good'
 import * as m015 from './015_legacy_office_formats'
 import * as m016 from './016_question_is_test'
 import * as m017 from './017_quiz_lms'
+import * as m018 from './018_anatomy_practical'
+import * as m019 from './019_anatomy_manual_target'
 
 export interface Migration {
   id: string
@@ -40,5 +42,7 @@ export const migrations: Migration[] = [
   m014,
   m015,
   m016,
-  m017
+  m017,
+  m018,
+  m019
 ]

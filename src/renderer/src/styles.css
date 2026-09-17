@@ -2922,3 +2922,308 @@ input[type='number']:focus {
   bottom: -5px;
   cursor: nwse-resize;
 }
+
+/* ---------- Thi thuc hanh giai phau (cau hoi dinh vi hinh) ---------- */
+
+.lesson-attachment-panel-anatomy-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.anatomy-quiz-playbody {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: none;
+}
+
+.anatomy-question-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.anatomy-question-text {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.anatomy-question-image-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.anatomy-question-image {
+  display: block;
+  width: 100%;
+  max-width: 900px;
+  border-radius: var(--radius-sm);
+}
+
+.anatomy-question-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.anatomy-mask-box {
+  fill: #0a0a0a;
+  stroke: none;
+}
+
+.anatomy-target-box {
+  fill: none;
+  stroke: #ff2d55;
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+}
+
+/* Man "Cap nhat cau hoi GP" - vung dang dien: khong che gi ca (thay het chu
+   goc trong anh), chi co vien vang noi bat de de thay tren anh nhieu chi tiet. */
+.anatomy-mask-box--current-outline {
+  fill: none;
+  stroke: #facc15;
+  stroke-width: 3;
+}
+
+.anatomy-answer-bar {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.anatomy-answer-input {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.anatomy-feedback {
+  margin: 0.9rem 0 0;
+  font-weight: 600;
+}
+
+.anatomy-feedback--correct {
+  color: var(--success);
+}
+
+.anatomy-feedback--wrong {
+  color: var(--danger);
+}
+
+.anatomy-results-score {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.anatomy-results-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.anatomy-results-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-soft);
+  font-size: 0.88rem;
+}
+
+.anatomy-results-item--correct {
+  border-color: var(--success);
+}
+
+.anatomy-results-item--wrong {
+  border-color: var(--danger);
+}
+
+.anatomy-results-item-index {
+  font-weight: 600;
+}
+
+/* ---------- Man hinh soan cau hoi giai phau ---------- */
+
+.anatomy-authoring-body {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.anatomy-authoring-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.anatomy-page-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.anatomy-review-canvas-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.anatomy-review-canvas-image {
+  display: block;
+  width: 100%;
+  max-width: 1000px;
+  border-radius: var(--radius-sm);
+}
+
+.anatomy-review-canvas-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.anatomy-candidate-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+}
+
+.anatomy-candidate-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  overflow-y: auto;
+}
+
+.anatomy-candidate-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.anatomy-candidate-item--selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.anatomy-candidate-item--confirmed {
+  opacity: 0.6;
+}
+
+.anatomy-candidate-item--rejected {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.anatomy-candidate-item-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.anatomy-candidate-empty {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 1rem;
+}
+
+.anatomy-candidate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 0.75rem;
+}
+
+.anatomy-candidate-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.anatomy-candidate-form input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.anatomy-candidate-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.anatomy-candidate-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Man "Cap nhat cau hoi GP" */
+
+.anatomy-scope-select {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 480px;
+}
+
+.anatomy-scope-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.anatomy-scope-option label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.anatomy-scope-option input[type='number'] {
+  width: 5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--text);
+}
+
+.anatomy-fill-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 900px;
+}

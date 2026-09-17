@@ -103,6 +103,37 @@ const api: AppApi = {
   },
   notes: {
     pickImage: () => ipcRenderer.invoke(IpcChannels.notes.pickImage)
+  },
+  anatomy: {
+    detectPage: (input) => ipcRenderer.invoke(IpcChannels.anatomy.detectPage, input),
+    detectAllPages: (input) => ipcRenderer.invoke(IpcChannels.anatomy.detectAllPages, input),
+    onDetectAllPagesProgress: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: { pageNumber: number; totalPages: number }
+      ): void => callback(payload)
+      ipcRenderer.on(IpcChannels.anatomy.detectAllPagesProgress, listener)
+      return () => ipcRenderer.removeListener(IpcChannels.anatomy.detectAllPagesProgress, listener)
+    },
+    listCandidatesForPage: (input) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.listCandidatesForPage, input),
+    updateCandidate: (input) => ipcRenderer.invoke(IpcChannels.anatomy.updateCandidate, input),
+    createManualCandidate: (input) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.createManualCandidate, input),
+    confirmCandidate: (input) => ipcRenderer.invoke(IpcChannels.anatomy.confirmCandidate, input),
+    updateQuestionAnswer: (input) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.updateQuestionAnswer, input),
+    rejectCandidate: (candidateId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.rejectCandidate, { candidateId }),
+    deleteCandidate: (candidateId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.deleteCandidate, { candidateId }),
+    countConfirmedForAttachment: (attachmentId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.countConfirmedForAttachment, { attachmentId }),
+    checkAnswer: (input) => ipcRenderer.invoke(IpcChannels.anatomy.checkAnswer, input),
+    startAttempt: (input) => ipcRenderer.invoke(IpcChannels.anatomy.startAttempt, input),
+    submitAttempt: (input) => ipcRenderer.invoke(IpcChannels.anatomy.submitAttempt, input),
+    getAttemptReview: (attemptId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.getAttemptReview, { attemptId })
   }
 }
 

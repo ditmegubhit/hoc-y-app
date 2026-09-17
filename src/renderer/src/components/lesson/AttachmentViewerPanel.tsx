@@ -1,9 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { X, ZoomIn, ZoomOut } from 'lucide-react'
+import { X, ZoomIn, ZoomOut, Crosshair } from 'lucide-react'
 import type { Attachment } from '@shared/types/attachment'
 import PdfImageViewer, { BASE_CONTENT_WIDTH } from './viewer/PdfImageViewer'
 import ResizeHandle from '@renderer/components/common/ResizeHandle'
 import { useAnnotationStore, type AnnotationTool } from '@renderer/stores/annotationStore'
+import { useAnatomyConfirmedCount } from '@renderer/queries/anatomyQuiz'
+import AnatomyUpdateOverlay from '@renderer/components/anatomy/AnatomyUpdateOverlay'
+import AnatomyQuizPlayOverlay from '@renderer/components/anatomy/AnatomyQuizPlayOverlay'
 
 interface AttachmentViewerPanelProps {
   attachment: Attachment
@@ -44,6 +47,10 @@ function AttachmentViewerPanel({
   const canViewInApp = VIEWABLE_TYPES.has(attachment.fileType)
   const [zoom, setZoom] = useState(DEFAULT_ZOOM)
   const bodyRef = useRef<HTMLDivElement>(null)
+
+  const isAnatomyEligible = attachment.fileType === 'pdf' || attachment.fileType === 'png' || attachment.fileType === 'jpg' || attachment.fileType === 'jpeg'
+  const anatomyConfirmedCount = useAnatomyConfirmedCount(attachment.id, isAnatomyEligible)
+  const [anatomyOverlay, setAnatomyOverlay] = useState<'none' | 'authoring' | 'quiz'>('none')
 
   // LessonWorkspacePage gan key={attachment.id} cho component nay - moi lan
   // doi file se remount hoan toan. Thay vi luon bat dau o 75% co dinh, tu
@@ -250,6 +257,18 @@ function AttachmentViewerPanel({
             </button>
           </div>
         )}
+        {isAnatomyEligible && (
+          <div className="lesson-attachment-panel-anatomy-actions">
+            <button type="button" className="btn-secondary" onClick={() => setAnatomyOverlay('authoring')}>
+              <Crosshair size={14} /> Cập nhật câu hỏi GP
+            </button>
+            {(anatomyConfirmedCount.data ?? 0) > 0 && (
+              <button type="button" className="btn-secondary" onClick={() => setAnatomyOverlay('quiz')}>
+                Thi thực hành giải phẫu ({anatomyConfirmedCount.data})
+              </button>
+            )}
+          </div>
+        )}
         <button type="button" title="Đóng" onClick={onClose}>
           <X size={16} />
         </button>
@@ -270,6 +289,21 @@ function AttachmentViewerPanel({
           </div>
         )}
       </div>
+
+      {anatomyOverlay === 'authoring' && (
+        <AnatomyUpdateOverlay
+          attachmentId={attachment.id}
+          lessonId={attachment.lessonId}
+          onExit={() => setAnatomyOverlay('none')}
+        />
+      )}
+      {anatomyOverlay === 'quiz' && (
+        <AnatomyQuizPlayOverlay
+          attachmentId={attachment.id}
+          title={`Thi thực hành giải phẫu - ${attachment.fileName}`}
+          onExit={() => setAnatomyOverlay('none')}
+        />
+      )}
     </aside>
   )
 }

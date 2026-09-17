@@ -69,5 +69,22 @@ export const IpcChannels = {
   },
   notes: {
     pickImage: 'notes:pickImage'
+  },
+  anatomy: {
+    detectPage: 'anatomy:detectPage',
+    detectAllPages: 'anatomy:detectAllPages',
+    detectAllPagesProgress: 'anatomy:detectAllPagesProgress',
+    listCandidatesForPage: 'anatomy:listCandidatesForPage',
+    updateCandidate: 'anatomy:updateCandidate',
+    createManualCandidate: 'anatomy:createManualCandidate',
+    confirmCandidate: 'anatomy:confirmCandidate',
+    updateQuestionAnswer: 'anatomy:updateQuestionAnswer',
+    rejectCandidate: 'anatomy:rejectCandidate',
+    deleteCandidate: 'anatomy:deleteCandidate',
+    countConfirmedForAttachment: 'anatomy:countConfirmedForAttachment',
+    checkAnswer: 'anatomy:checkAnswer',
+    startAttempt: 'anatomy:startAttempt',
+    submitAttempt: 'anatomy:submitAttempt',
+    getAttemptReview: 'anatomy:getAttemptReview'
   }
 } as const

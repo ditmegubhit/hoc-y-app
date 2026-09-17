@@ -1,5 +1,8 @@
 import type { DraftQuestion } from '../../../shared/types/question'
 import { normalizeQuestionText } from './dedup'
+import { stripDiacritics } from '../../../shared/text/normalizeVietnamese'
+
+export { stripDiacritics }
 
 // So trung cau hoi theo NGU NGHIA (khong chi khop tung chu nhu `dedupeQuestions`).
 //
@@ -21,17 +24,6 @@ const VI_STOPWORDS = new Set([
   'phai', 'that', 'rat', 'hon', 'bao', 'nhieu', 'it', 'moi', 'tat', 'ca', 'dau',
   'phan', 'loai', 'nguoi', 'truong', 'thanh'
 ])
-
-const COMBINING_MARKS = /[̀-ͯ]/g
-
-/** Bo dau tieng Viet (chi de SO SANH, khong dung de hien thi). */
-export function stripDiacritics(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(COMBINING_MARKS, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-}
 
 /** Tu "co nghia" cua cau: bo dau, bo stopword, bo tu qua ngan. */
 export function contentTokens(s: string): string[] {

@@ -16,3 +16,9 @@ Thumbs.db
 # nham vao root luc setup Tesseract, khong duoc code nao tham chieu toi)
 /eng.traineddata
 /vie.traineddata
+
+# Engine PaddleOCR-json (~270MB, binary + model nhi phan) - dang thu nghiem
+# cho tinh nang anatomy, KHONG commit vao git. Tai lai tu
+# https://github.com/hiroi-sora/PaddleOCR-json/releases (v1.4.1, windows_x64)
+# giai nen vao dung duong dan nay neu can dung lai o may khac.
+resources/paddleocr/
