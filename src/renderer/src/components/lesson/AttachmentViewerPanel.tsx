@@ -4,9 +4,10 @@ import type { Attachment } from '@shared/types/attachment'
 import PdfImageViewer, { BASE_CONTENT_WIDTH } from './viewer/PdfImageViewer'
 import ResizeHandle from '@renderer/components/common/ResizeHandle'
 import { useAnnotationStore, type AnnotationTool } from '@renderer/stores/annotationStore'
-import { useAnatomyConfirmedCount } from '@renderer/queries/anatomyQuiz'
+import { useAnatomyConfirmedCount, useAnatomyEligibility } from '@renderer/queries/anatomyQuiz'
 import AnatomyUpdateOverlay from '@renderer/components/anatomy/AnatomyUpdateOverlay'
 import AnatomyQuizPlayOverlay from '@renderer/components/anatomy/AnatomyQuizPlayOverlay'
+import ConfirmDialog from '@renderer/components/common/ConfirmDialog'
 
 interface AttachmentViewerPanelProps {
   attachment: Attachment
@@ -48,7 +49,9 @@ function AttachmentViewerPanel({
   const [zoom, setZoom] = useState(DEFAULT_ZOOM)
   const bodyRef = useRef<HTMLDivElement>(null)
 
-  const isAnatomyEligible = attachment.fileType === 'pdf' || attachment.fileType === 'png' || attachment.fileType === 'jpg' || attachment.fileType === 'jpeg'
+  const isAnatomyPdf = attachment.fileType === 'pdf'
+  const anatomyEligibility = useAnatomyEligibility(attachment.id, isAnatomyPdf)
+  const isAnatomyEligible = anatomyEligibility.data?.status === 'eligible' && !anatomyEligibility.data.needsSourceConfirmation
   const anatomyConfirmedCount = useAnatomyConfirmedCount(attachment.id, isAnatomyEligible)
   const [anatomyOverlay, setAnatomyOverlay] = useState<'none' | 'authoring' | 'quiz'>('none')
 
@@ -257,14 +260,17 @@ function AttachmentViewerPanel({
             </button>
           </div>
         )}
+        {isAnatomyPdf && anatomyEligibility.isLoading && (
+          <span className="lesson-attachment-panel-anatomy-status">Đang kiểm tra ảnh…</span>
+        )}
         {isAnatomyEligible && (
           <div className="lesson-attachment-panel-anatomy-actions">
             <button type="button" className="btn-secondary" onClick={() => setAnatomyOverlay('authoring')}>
-              <Crosshair size={14} /> Cập nhật câu hỏi GP
+              <Crosshair size={14} /> Chỉnh sửa Thi TH GP
             </button>
             {(anatomyConfirmedCount.data ?? 0) > 0 && (
               <button type="button" className="btn-secondary" onClick={() => setAnatomyOverlay('quiz')}>
-                Thi thực hành giải phẫu ({anatomyConfirmedCount.data})
+                Thi TH GP ({anatomyConfirmedCount.data})
               </button>
             )}
           </div>
@@ -300,10 +306,25 @@ function AttachmentViewerPanel({
       {anatomyOverlay === 'quiz' && (
         <AnatomyQuizPlayOverlay
           attachmentId={attachment.id}
-          title={`Thi thực hành giải phẫu - ${attachment.fileName}`}
+          title={`Thi TH GP - ${attachment.fileName}`}
           onExit={() => setAnatomyOverlay('none')}
         />
       )}
+      <ConfirmDialog
+        open={anatomyEligibility.data?.needsSourceConfirmation === true}
+        title="Xác nhận file PDF đã cập nhật"
+        message="File này có giống 90% file gốc không?"
+        confirmLabel="Có, ánh xạ"
+        cancelLabel="Không, vô hiệu hóa"
+        onConfirm={() => {
+          void window.api.anatomy.resolveSourceChange({ attachmentId: attachment.id, isSimilar: true })
+            .then(() => anatomyEligibility.refetch())
+        }}
+        onCancel={() => {
+          void window.api.anatomy.resolveSourceChange({ attachmentId: attachment.id, isSimilar: false })
+            .then(() => anatomyEligibility.refetch())
+        }}
+      />
     </aside>
   )
 }

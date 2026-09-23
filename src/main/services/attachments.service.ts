@@ -9,6 +9,7 @@ import * as attachmentsRepo from '../db/repositories/attachments.repo'
 import * as lessonsRepo from '../db/repositories/lessons.repo'
 import * as searchIndexRepo from '../db/repositories/searchIndex.repo'
 import * as wordPositionsRepo from '../db/repositories/wordPositions.repo'
+import * as anatomyEligibilityRepo from '../db/repositories/anatomyEligibility.repo'
 import type { Attachment, AttachmentFileType } from '../../shared/types/attachment'
 
 // Van co the co text OCR ra 1-2 ky tu rac (nhieu/mo) - khong tinh la "co noi
@@ -167,6 +168,7 @@ async function syncOne(row: attachmentsRepo.SyncableAttachment): Promise<void> {
       fileSizeBytes: fresh.fileSizeBytes,
       sourceMtimeMs: st.mtimeMs
     })
+    anatomyEligibilityRepo.markSourceChangedIfMapped(row.id)
     await deleteStoredFile(oldStored)
     await invalidateOfficePdfCache(row.id) // docx/pptx: xoa PDF cache cu
 

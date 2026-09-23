@@ -1,120 +1,70 @@
-import { useEffect, useRef, useState } from 'react'
 import { usePageImage } from '@renderer/queries/attachmentView'
-import type { PlayableAnatomyQuestion } from '@shared/types/anatomyQuiz'
+import type { PlayableAnatomyQuestion, Rect } from '@shared/types/anatomyQuiz'
 
-interface AnatomyQuestionCardProps {
+interface Props {
   attachmentId: string
   question: PlayableAnatomyQuestion
   index: number
   total: number
   value: string
   onChange: (value: string) => void
-  onSubmit: () => void
+  onConfirm: () => void
   feedback: { isCorrect: boolean; correctAnswerText: string } | null
-  disabled: boolean
+  confirmed: boolean
+  allowUnconfirm?: boolean
+  timedOut?: boolean
 }
 
-function AnatomyQuestionCard({
-  attachmentId,
-  question,
-  index,
-  total,
-  value,
-  onChange,
-  onSubmit,
-  feedback,
-  disabled
-}: AnatomyQuestionCardProps): React.JSX.Element {
+const sameBox = (a: Rect, b: Rect): boolean =>
+  Math.abs(a.x0 - b.x0) < 1 && Math.abs(a.y0 - b.y0) < 1 &&
+  Math.abs(a.x1 - b.x1) < 1 && Math.abs(a.y1 - b.y1) < 1
+
+export default function AnatomyQuestionCard(props: Props): React.JSX.Element {
+  const { attachmentId, question, index, total, value, onChange, onConfirm,
+    feedback, confirmed, allowUnconfirm = false, timedOut = false } = props
   const pageImage = usePageImage(attachmentId, 'page', question.pageNumber, true)
-  const imgRef = useRef<HTMLImageElement>(null)
-  const [displayedWidth, setDisplayedWidth] = useState(0)
-
-  useEffect(() => {
-    const el = imgRef.current
-    if (!el) return
-    const update = (): void => setDisplayedWidth(el.clientWidth)
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [pageImage.data])
-
-  const scale = displayedWidth > 0 ? displayedWidth / question.refWidth : 0
-  const t = question.targetBox
+  const crop = question.cropBox ?? { x0: 0, y0: 0, x1: question.refWidth, y1: question.refHeight }
+  const width = Math.max(1, crop.x1 - crop.x0)
+  const height = Math.max(1, crop.y1 - crop.y0)
 
   return (
     <div className="anatomy-question-card">
-      <p className="anatomy-question-text">
-        <strong>
-          Câu {index + 1}/{total}.
-        </strong>{' '}
-        Ô viền đỏ đang che cấu trúc nào?
-      </p>
-
+      <p className="anatomy-question-text"><strong>Câu {index + 1}/{total}.</strong> Đây là gì?</p>
       <div className="anatomy-question-image-wrap">
         {pageImage.data ? (
-          <>
-            <img
-              ref={imgRef}
-              className="anatomy-question-image"
-              src={`data:${pageImage.data.mimeType};base64,${pageImage.data.base64}`}
-              alt={`Trang ${question.pageNumber}`}
-            />
-            {scale > 0 && (
-              <svg
-                className="anatomy-question-overlay"
-                width={displayedWidth}
-                height={displayedWidth * (question.refHeight / question.refWidth)}
-              >
-                {question.maskBoxes.map((box, i) => (
-                  <rect
-                    key={i}
-                    x={box.x0 * scale}
-                    y={box.y0 * scale}
-                    width={(box.x1 - box.x0) * scale}
-                    height={(box.y1 - box.y0) * scale}
-                    className="anatomy-mask-box"
-                  />
-                ))}
-                <rect
-                  x={t.x0 * scale}
-                  y={t.y0 * scale}
-                  width={(t.x1 - t.x0) * scale}
-                  height={(t.y1 - t.y0) * scale}
-                  className="anatomy-target-box"
-                />
-              </svg>
-            )}
-          </>
-        ) : (
-          <div className="lesson-widget-placeholder">Đang tải ảnh...</div>
-        )}
+          <svg className="anatomy-station-svg" viewBox={`${crop.x0} ${crop.y0} ${width} ${height}`}>
+            <image href={`data:${pageImage.data.mimeType};base64,${pageImage.data.base64}`}
+              x="0" y="0" width={question.refWidth} height={question.refHeight}
+              preserveAspectRatio="none" />
+            {question.maskBoxes.map((box, i) =>
+              feedback && sameBox(box, question.targetBox) ? null : (
+                <rect key={i} x={box.x0} y={box.y0}
+                  width={Math.max(1, box.x1 - box.x0)} height={Math.max(1, box.y1 - box.y0)}
+                  className="anatomy-mask-box" />
+              ))}
+            <rect x={question.targetBox.x0} y={question.targetBox.y0}
+              width={Math.max(1, question.targetBox.x1 - question.targetBox.x0)}
+              height={Math.max(1, question.targetBox.y1 - question.targetBox.y0)}
+              className="anatomy-target-box" />
+          </svg>
+        ) : <div className="lesson-widget-placeholder">Đang tải ảnh...</div>}
       </div>
-
       <div className="anatomy-answer-bar">
-        <input
-          type="text"
-          className="anatomy-answer-input"
-          placeholder="Gõ tên cấu trúc..."
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !disabled) onSubmit()
-          }}
-        />
-        <button type="button" className="btn-primary" disabled={disabled} onClick={onSubmit}>
-          Trả lời
+        <input className={`anatomy-answer-input${feedback ? (feedback.isCorrect ? ' is-correct' : ' is-wrong') : ''}`}
+          type="text" placeholder="Gõ tên cấu trúc..." value={value}
+          disabled={confirmed || timedOut} autoFocus onChange={(event) => onChange(event.target.value)} />
+        <button type="button" className="btn-primary" disabled={timedOut} onClick={onConfirm}>
+          {confirmed && allowUnconfirm ? 'Huỷ xác nhận' : 'Xác nhận'}
         </button>
       </div>
-
       {feedback && (
-        <p className={`anatomy-feedback ${feedback.isCorrect ? 'anatomy-feedback--correct' : 'anatomy-feedback--wrong'}`}>
-          {feedback.isCorrect ? '✓ Đúng rồi.' : `✗ Sai. Đáp án đúng: ${feedback.correctAnswerText}`}
-        </p>
+        <div className={`anatomy-feedback ${feedback.isCorrect ? 'anatomy-feedback--correct' : 'anatomy-feedback--wrong'}`}>
+          <p>{feedback.isCorrect ? '✓ Đúng.' : '✗ Sai.'}</p>
+          <p>Bạn trả lời: {value || '(để trống)'}</p>
+          <p>Đáp án đúng: {feedback.correctAnswerText}</p>
+          {timedOut && <p>Bạn ngu vcl</p>}
+        </div>
       )}
     </div>
   )
 }
-
-export default AnatomyQuestionCard

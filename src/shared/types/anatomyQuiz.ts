@@ -28,6 +28,8 @@ export interface AnatomyLabelCandidate {
   // lai xem/sua 1 vung da xong. null neu chua confirmed.
   answerText: string | null
   acceptedAlternates: string[] | null
+  confidence: number | null
+  cropBox: Rect | null
 }
 
 export interface CreateManualCandidateInput {
@@ -58,6 +60,47 @@ export interface UpdateAnatomyCandidateInput {
   candidateId: string
   rawText?: string
   labelBox?: Rect
+  cropBox?: Rect | null
+}
+
+export interface AnatomyPageState {
+  pageNumber: number
+  reviewed: boolean
+  excluded: boolean
+}
+
+export type AnatomyEligibilityStatus = 'legacy' | 'analyzing' | 'eligible' | 'ineligible' | 'failed'
+export interface AnatomyEligibility {
+  status: AnatomyEligibilityStatus
+  imagePageRatio: number | null
+  analyzedPages: number
+  totalPages: number
+  needsSourceConfirmation: boolean
+}
+
+export interface AnatomyStationSet {
+  id: string
+  attachmentId: string
+  name: string
+  feedbackMode: AnatomyFeedbackMode
+  timeLimitSeconds: number
+  questionCount: number
+  createdAt: string
+  nextAttemptNumber: number
+}
+
+export interface AnatomyQuestionSummary {
+  id: string
+  pageNumber: number
+  answerText: string
+  selected: boolean
+}
+
+export interface CreateAnatomyStationSetInput {
+  attachmentId: string
+  feedbackMode: AnatomyFeedbackMode
+  timeLimitSeconds: number
+  questionIds: string[]
 }
 
 // ---------- Lam bai thi ----------
@@ -71,18 +114,32 @@ export interface PlayableAnatomyQuestion {
   targetBox: Rect
   refWidth: number
   refHeight: number
+  cropBox: Rect | null
 }
 
 export interface StartAnatomyAttemptInput {
-  attachmentId: string
-  feedbackMode: AnatomyFeedbackMode
-  questionCount: number
+  stationSetId: string
 }
 
 export interface StartedAnatomyAttempt {
   attemptId: string
   feedbackMode: AnatomyFeedbackMode
+  stationSetId: string
+  stationSetName: string
+  attemptNumber: number
+  timeLimitSeconds: number
+  currentIndex: number
+  remainingMs: number | null
+  penaltyDebtMs: number
   questions: PlayableAnatomyQuestion[]
+}
+
+export interface SaveAnatomyAttemptProgressInput {
+  attemptId: string
+  currentIndex: number
+  remainingMs: number | null
+  penaltyDebtMs: number
+  answers: AnatomyAttemptAnswerInput[]
 }
 
 export interface AnatomyAttemptAnswerInput {
@@ -103,6 +160,7 @@ export interface AnatomyAttemptAnswerReview {
   targetBox: Rect
   refWidth: number
   refHeight: number
+  cropBox: Rect | null
   submittedText: string
   correctAnswerText: string
   isCorrect: boolean
@@ -117,5 +175,17 @@ export interface AnatomyAttemptReview {
   durationSeconds: number | null
   startedAt: string
   submittedAt: string
+  attemptNumber: number
+  stationSetName: string
   answers: AnatomyAttemptAnswerReview[]
+}
+
+export interface AnatomyAttemptSummary {
+  attemptId: string
+  stationSetName: string
+  attemptNumber: number
+  score: number
+  correctCount: number
+  totalCount: number
+  submittedAt: string
 }

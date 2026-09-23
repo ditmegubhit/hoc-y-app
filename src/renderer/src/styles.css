@@ -2975,6 +2975,16 @@ input[type='number']:focus {
   stroke: none;
 }
 
+.anatomy-mask-box--authoring {
+  fill: rgba(0, 0, 0, 0.3);
+  stroke: none;
+}
+
+.anatomy-mask-box--preview-target {
+  stroke: #ff2d55;
+  stroke-width: 4;
+}
+
 .anatomy-target-box {
   fill: none;
   stroke: #ff2d55;
@@ -2985,9 +2995,55 @@ input[type='number']:focus {
 /* Man "Cap nhat cau hoi GP" - vung dang dien: khong che gi ca (thay het chu
    goc trong anh), chi co vien vang noi bat de de thay tren anh nhieu chi tiet. */
 .anatomy-mask-box--current-outline {
-  fill: none;
-  stroke: #facc15;
+  fill: rgba(0, 0, 0, 0.3);
+  stroke: #ff2d55;
   stroke-width: 3;
+}
+
+.anatomy-station-svg {
+  display: block;
+  width: 100%;
+  max-width: min(1100px, 92vw);
+  max-height: 66vh;
+  background: #111;
+  border-radius: var(--radius-sm);
+}
+
+.anatomy-answer-input.is-correct { border-color: var(--success); color: var(--success); }
+.anatomy-answer-input.is-wrong { border-color: var(--danger); color: var(--danger); }
+
+.anatomy-station-setup { display: grid; gap: 1rem; padding: 1rem; }
+.anatomy-setup-card { border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 1rem; background: var(--card-bg); }
+.anatomy-setup-card h3 { margin-top: 0; }
+.anatomy-setup-grid { display: grid; grid-template-columns: repeat(4, minmax(110px, 1fr)); gap: .75rem; margin: 1rem 0; }
+.anatomy-setup-grid label { display: grid; gap: .3rem; color: var(--text-muted); font-size: .82rem; }
+.anatomy-setup-grid input { padding: .5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-main); color: var(--text); }
+.anatomy-question-picker { margin: 1rem 0; max-height: 260px; overflow: auto; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); padding: .6rem; }
+.anatomy-picker-actions { display: flex; gap: .5rem; margin: .6rem 0; }
+.anatomy-question-choice { display: block; padding: .25rem; font-size: .83rem; }
+.anatomy-saved-set { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: .6rem; padding: .7rem 0; border-bottom: 1px solid var(--border-soft); }
+.anatomy-saved-set div { display: grid; gap: .2rem; }
+.anatomy-saved-set span { color: var(--text-muted); font-size: .8rem; }
+.anatomy-history-chart { height: 120px; display: flex; align-items: flex-end; gap: 8px; padding: 12px; margin-bottom: 12px; border-radius: 10px; background: var(--surface-soft); }
+.anatomy-history-chart > div { position: relative; flex: 1; height: 88px; display: flex; align-items: flex-end; justify-content: center; }
+.anatomy-history-chart span { width: min(28px, 80%); min-height: 2px; border-radius: 5px 5px 0 0; background: var(--accent); }
+.anatomy-history-chart small { position: absolute; bottom: -18px; font-size: 11px; }
+.anatomy-result-actions { display: flex; justify-content: center; gap: 10px; margin-top: 16px; }
+.anatomy-station-toolbar { display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; }
+.anatomy-station-timer { position: relative; min-width: 190px; padding: .55rem .75rem; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); overflow: hidden; font-weight: 700; }
+.anatomy-station-timer > span { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--accent); transition: width .2s linear; }
+.anatomy-station-timer.danger { color: var(--danger); border-color: var(--danger); }
+.anatomy-station-timer.danger > span { background: var(--danger); }
+.anatomy-paused { display: grid; place-items: center; min-height: 45vh; font-size: 2rem; font-weight: 800; }
+.anatomy-next { margin: 1rem auto; display: block; }
+.anatomy-resume-warning { position: relative; margin: auto; max-width: 620px; padding: 2rem; background: var(--card-bg); border: 1px solid var(--danger); border-radius: var(--radius); box-shadow: var(--shadow-lg); }
+.anatomy-resume-warning > div { display: flex; gap: .75rem; justify-content: center; }
+.anatomy-resume-close { position: absolute; right: .5rem; top: .4rem; border: 0; background: transparent; color: var(--text); font-size: 1.5rem; }
+.anatomy-review-result { margin: 1rem 0; }
+.lesson-attachment-panel-anatomy-status { font-size: .75rem; color: var(--text-muted); }
+
+@media (max-width: 900px) {
+  .anatomy-setup-grid { grid-template-columns: repeat(2, minmax(100px, 1fr)); }
 }
 
 .anatomy-answer-bar {
@@ -3093,6 +3149,9 @@ input[type='number']:focus {
   top: 0;
   left: 0;
 }
+.anatomy-region-editor { width: 100%; display: grid; gap: .75rem; }
+.anatomy-region-tools { display: flex; gap: .45rem; align-items: center; flex-wrap: wrap; }
+.anatomy-region-tools select { max-width: 220px; padding: .45rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-main); color: var(--text); }
 
 .anatomy-candidate-sidebar {
   display: flex;

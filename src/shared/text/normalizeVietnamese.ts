@@ -10,14 +10,21 @@ export function stripDiacritics(s: string): string {
 }
 
 /**
- * Chuan hoa 1 cau tra loi de so khop "gan dung": bo dau, ve chu thuong, gop
- * khoang trang thua, cat khoang trang dau/cuoi. Dung cho cham diem cau hoi go
+ * Chuan hoa dap an chay tram: GIU NGUYEN dau tieng Viet va dau cau, chi bo
+ * phan biet hoa/thuong, bo gach ngang, gop khoang trang va mo rong cac viet
+ * tat y khoa da duoc chot. Khong dung so khop mo/sai chinh ta.
  * chu tu do (anatomy point question) - khong dung Levenshtein, danh sach dap
  * an chap nhan duoc (accepted alternates) la co che chinh de bat bien the.
  */
 export function normalizeForAnswerMatch(s: string): string {
-  return stripDiacritics(s)
-    .toLowerCase()
+  const normalized = s
+    .normalize('NFC')
+    .toLocaleLowerCase('vi')
+    .replace(/-/g, ' ')
     .trim()
     .replace(/\s+/g, ' ')
+  const expansions: Record<string, string> = {
+    'đm': 'động mạch', tm: 'tĩnh mạch', dc: 'dây chằng', tk: 'thần kinh'
+  }
+  return normalized.split(' ').map((word) => expansions[word] ?? word).join(' ')
 }

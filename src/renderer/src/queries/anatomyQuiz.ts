@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   ConfirmAnatomyCandidateInput,
+  CreateAnatomyStationSetInput,
   CreateManualCandidateInput,
   StartAnatomyAttemptInput,
   SubmitAnatomyAttemptInput,
@@ -11,7 +12,11 @@ import type {
 export const anatomyKeys = {
   candidatesForPage: (attachmentId: string, pageNumber: number) =>
     ['anatomy', 'candidates', attachmentId, pageNumber] as const,
-  confirmedCount: (attachmentId: string) => ['anatomy', 'confirmedCount', attachmentId] as const
+  confirmedCount: (attachmentId: string) => ['anatomy', 'confirmedCount', attachmentId] as const,
+  eligibility: (attachmentId: string) => ['anatomy', 'eligibility', attachmentId] as const,
+  stationSets: (attachmentId: string) => ['anatomy', 'stationSets', attachmentId] as const,
+  questionSummaries: (attachmentId: string) => ['anatomy', 'questionSummaries', attachmentId] as const,
+  attemptHistory: (attachmentId: string) => ['anatomy', 'attemptHistory', attachmentId] as const
 }
 
 // ---------- Soan cau hoi ----------
@@ -30,11 +35,17 @@ export function useCandidatesForPage(attachmentId: string, pageNumber: number, e
 export function useDetectAllPages(attachmentId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => window.api.anatomy.detectAllPages({ attachmentId }),
+    mutationFn: (force: boolean) => window.api.anatomy.detectAllPages({ attachmentId, force }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['anatomy', 'candidates', attachmentId] })
+      qc.invalidateQueries({ queryKey: anatomyKeys.confirmedCount(attachmentId) })
+      qc.invalidateQueries({ queryKey: anatomyKeys.questionSummaries(attachmentId) })
     }
   })
+}
+
+export function useCancelDetectAllPages() {
+  return useMutation({ mutationFn: (attachmentId: string) => window.api.anatomy.cancelDetectAllPages(attachmentId) })
 }
 
 export function useDetectPage(attachmentId: string, pageNumber: number) {
@@ -43,6 +54,8 @@ export function useDetectPage(attachmentId: string, pageNumber: number) {
     mutationFn: () => window.api.anatomy.detectPage({ attachmentId, pageNumber }),
     onSuccess: (data) => {
       qc.setQueryData(anatomyKeys.candidatesForPage(attachmentId, pageNumber), data)
+      qc.invalidateQueries({ queryKey: anatomyKeys.confirmedCount(attachmentId) })
+      qc.invalidateQueries({ queryKey: anatomyKeys.questionSummaries(attachmentId) })
     }
   })
 }
@@ -121,6 +134,44 @@ export function useAnatomyConfirmedCount(attachmentId: string, enabled = true) {
   })
 }
 
+export function useAnatomyEligibility(attachmentId: string, enabled = true) {
+  return useQuery({
+    queryKey: anatomyKeys.eligibility(attachmentId),
+    queryFn: () => window.api.anatomy.getEligibility(attachmentId), enabled,
+    staleTime: Infinity
+  })
+}
+
+export function useAnatomyQuestionSummaries(attachmentId: string) {
+  return useQuery({
+    queryKey: anatomyKeys.questionSummaries(attachmentId),
+    queryFn: () => window.api.anatomy.listQuestionSummaries(attachmentId)
+  })
+}
+
+export function useAnatomyStationSets(attachmentId: string) {
+  return useQuery({
+    queryKey: anatomyKeys.stationSets(attachmentId),
+    queryFn: () => window.api.anatomy.listStationSets(attachmentId)
+  })
+}
+
+export function useCreateAnatomyStationSet(attachmentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateAnatomyStationSetInput) => window.api.anatomy.createStationSet(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: anatomyKeys.stationSets(attachmentId) })
+  })
+}
+
+export function useDeleteAnatomyStationSet(attachmentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (stationSetId: string) => window.api.anatomy.deleteStationSet(stationSetId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: anatomyKeys.stationSets(attachmentId) })
+  })
+}
+
 // ---------- Lam bai thi ----------
 
 export function useCheckAnatomyAnswer() {
@@ -142,6 +193,22 @@ export function useSubmitAnatomyAttempt(attachmentId: string) {
     mutationFn: (input: SubmitAnatomyAttemptInput) => window.api.anatomy.submitAttempt(input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: anatomyKeys.confirmedCount(attachmentId) })
+      qc.invalidateQueries({ queryKey: anatomyKeys.attemptHistory(attachmentId) })
     }
+  })
+}
+
+export function useAnatomyAttemptHistory(attachmentId: string) {
+  return useQuery({
+    queryKey: anatomyKeys.attemptHistory(attachmentId),
+    queryFn: () => window.api.anatomy.listAttemptHistory(attachmentId)
+  })
+}
+
+export function useDeleteAnatomyAttemptHistory(attachmentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (attemptId: string) => window.api.anatomy.deleteAttemptHistory(attemptId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: anatomyKeys.attemptHistory(attachmentId) })
   })
 }

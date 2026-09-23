@@ -57,6 +57,7 @@ export interface LabelCluster {
   box: Rect
   text: string
   coordSpace: 'pdf_point' | 'image_pixel'
+  confidence?: number | null
 }
 
 interface PixelWord {

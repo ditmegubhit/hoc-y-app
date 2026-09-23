@@ -32,9 +32,15 @@ import type {
 } from './quiz'
 import type {
   AnatomyAttemptReview,
+  AnatomyAttemptSummary,
+  AnatomyQuestionSummary,
+  AnatomyStationSet,
+  AnatomyEligibility,
   AnatomyLabelCandidate,
   ConfirmAnatomyCandidateInput,
+  CreateAnatomyStationSetInput,
   CreateManualCandidateInput,
+  SaveAnatomyAttemptProgressInput,
   StartAnatomyAttemptInput,
   StartedAnatomyAttempt,
   SubmitAnatomyAttemptInput,
@@ -153,7 +159,8 @@ export interface AppApi {
   }
   anatomy: {
     detectPage: (input: { attachmentId: string; pageNumber: number }) => Promise<AnatomyLabelCandidate[]>
-    detectAllPages: (input: { attachmentId: string }) => Promise<{ totalPages: number }>
+    detectAllPages: (input: { attachmentId: string; force?: boolean }) => Promise<{ totalPages: number; cancelled?: boolean; alreadyComplete?: boolean }>
+    cancelDetectAllPages: (attachmentId: string) => Promise<void>
     onDetectAllPagesProgress: (
       callback: (payload: { pageNumber: number; totalPages: number }) => void
     ) => () => void
@@ -168,6 +175,16 @@ export interface AppApi {
     rejectCandidate: (candidateId: string) => Promise<void>
     deleteCandidate: (candidateId: string) => Promise<void>
     countConfirmedForAttachment: (attachmentId: string) => Promise<number>
+    listQuestionSummaries: (attachmentId: string) => Promise<AnatomyQuestionSummary[]>
+    listStationSets: (attachmentId: string) => Promise<AnatomyStationSet[]>
+    createStationSet: (input: CreateAnatomyStationSetInput) => Promise<AnatomyStationSet>
+    deleteStationSet: (stationSetId: string) => Promise<void>
+    saveAttemptProgress: (input: SaveAnatomyAttemptProgressInput) => Promise<void>
+    resumeAttempt: (attemptId: string) => Promise<StartedAnatomyAttempt | null>
+    getEligibility: (attachmentId: string) => Promise<AnatomyEligibility>
+    resolveSourceChange: (input: { attachmentId: string; isSimilar: boolean }) => Promise<void>
+    setPageReview: (input: { attachmentId: string; pageNumber: number; reviewed?: boolean; excluded?: boolean }) => Promise<void>
+    getPageReview: (input: { attachmentId: string; pageNumber: number }) => Promise<{ reviewed: boolean; excluded: boolean }>
     checkAnswer: (input: {
       questionId: string
       submittedText: string
@@ -175,5 +192,7 @@ export interface AppApi {
     startAttempt: (input: StartAnatomyAttemptInput) => Promise<StartedAnatomyAttempt>
     submitAttempt: (input: SubmitAnatomyAttemptInput) => Promise<AnatomyAttemptReview>
     getAttemptReview: (attemptId: string) => Promise<AnatomyAttemptReview | null>
+    listAttemptHistory: (attachmentId: string) => Promise<AnatomyAttemptSummary[]>
+    deleteAttemptHistory: (attemptId: string) => Promise<void>
   }
 }

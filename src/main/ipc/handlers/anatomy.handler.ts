@@ -5,6 +5,11 @@ import * as candidatesRepo from '../../db/repositories/anatomyCandidates.repo'
 import * as anatomyQuizRepo from '../../db/repositories/anatomyQuiz.repo'
 import { detectLabelsForPage } from '../../services/anatomy/detectPage'
 import { getPageCount } from '../../services/attachmentView.service'
+import { getDb } from '../../db'
+import { analyzeAnatomyEligibility } from '../../services/anatomy/eligibility'
+import * as anatomyEligibilityRepo from '../../db/repositories/anatomyEligibility.repo'
+
+const cancelledScans = new Set<string>()
 
 const attachmentPageSchema = z.object({
   attachmentId: z.string(),
@@ -21,7 +26,8 @@ const rectSchema = z.object({
 const updateCandidateSchema = z.object({
   candidateId: z.string(),
   rawText: z.string().optional(),
-  labelBox: rectSchema.optional()
+  labelBox: rectSchema.optional(),
+  cropBox: rectSchema.nullable().optional()
 })
 
 const candidateIdSchema = z.object({ candidateId: z.string() })
@@ -49,6 +55,7 @@ const updateQuestionAnswerSchema = z.object({
 })
 
 const attachmentIdSchema = z.object({ attachmentId: z.string() })
+const detectAllPagesSchema = attachmentIdSchema.extend({ force: z.boolean().optional() })
 
 const checkAnswerSchema = z.object({
   questionId: z.string(),
@@ -56,10 +63,30 @@ const checkAnswerSchema = z.object({
 })
 
 const startAttemptSchema = z.object({
+  stationSetId: z.string()
+})
+
+const stationSetSchema = z.object({
   attachmentId: z.string(),
   feedbackMode: z.enum(['practice', 'exam']),
-  questionCount: z.number().int().positive()
+  timeLimitSeconds: z.number().int().min(0).max(300),
+  questionIds: z.array(z.string()).min(1)
+}).refine((value) => value.feedbackMode === 'practice' || value.timeLimitSeconds > 0, {
+  message: 'Thi thử phải có thời gian từ 1 đến 300 giây.'
 })
+
+const saveProgressSchema = z.object({
+  attemptId: z.string(), currentIndex: z.number().int().nonnegative(),
+  remainingMs: z.number().int().nonnegative().nullable(),
+  penaltyDebtMs: z.number().int().nonnegative(),
+  answers: z.array(z.object({ questionId: z.string(), submittedText: z.string() }))
+})
+
+const stationSetIdSchema = z.object({ stationSetId: z.string() })
+const pageReviewSchema = attachmentPageSchema.extend({
+  reviewed: z.boolean().optional(), excluded: z.boolean().optional()
+})
+const resolveSourceChangeSchema = z.object({ attachmentId: z.string(), isSimilar: z.boolean() })
 
 const submitAttemptSchema = z.object({
   attemptId: z.string(),
@@ -86,16 +113,33 @@ export function registerAnatomyHandlers(): void {
   // moi trang truoc, roi tu dien dap an sau, khong can cho "Dang do trang..."
   // moi trang trong luc dien.
   ipcMain.handle(IpcChannels.anatomy.detectAllPages, async (event, payload) => {
-    const { attachmentId } = attachmentIdSchema.parse(payload)
+    const { attachmentId, force = false } = detectAllPagesSchema.parse(payload)
     const totalPages = await getPageCount(attachmentId)
     if (!totalPages) return { totalPages: 0 }
-    for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
+    const row = getDb().prepare('SELECT last_page, completed FROM anatomy_scan_progress WHERE attachment_id = ?')
+      .get(attachmentId) as { last_page: number; completed: number } | undefined
+    if (row?.completed === 1 && !force) return { totalPages, alreadyComplete: true }
+    const startPage = force ? 1 : Math.min(totalPages, (row?.last_page ?? 0) + 1)
+    cancelledScans.delete(attachmentId)
+    for (let pageNumber = startPage; pageNumber <= totalPages; pageNumber++) {
+      if (cancelledScans.has(attachmentId)) break
       await detectLabelsForPage(attachmentId, pageNumber)
+      getDb().prepare(
+        `INSERT INTO anatomy_scan_progress (attachment_id, last_page, total_pages, completed, updated_at)
+         VALUES (?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(attachment_id) DO UPDATE SET last_page = excluded.last_page,
+           total_pages = excluded.total_pages, completed = excluded.completed, updated_at = datetime('now')`
+      ).run(attachmentId, pageNumber, totalPages, pageNumber === totalPages ? 1 : 0)
       if (!event.sender.isDestroyed()) {
         event.sender.send(IpcChannels.anatomy.detectAllPagesProgress, { pageNumber, totalPages })
       }
     }
-    return { totalPages }
+    return { totalPages, cancelled: cancelledScans.has(attachmentId) }
+  })
+
+  ipcMain.handle(IpcChannels.anatomy.cancelDetectAllPages, (_event, payload) => {
+    const { attachmentId } = attachmentIdSchema.parse(payload)
+    cancelledScans.add(attachmentId)
   })
 
   ipcMain.handle(IpcChannels.anatomy.listCandidatesForPage, (_event, payload) => {
@@ -105,12 +149,16 @@ export function registerAnatomyHandlers(): void {
 
   ipcMain.handle(IpcChannels.anatomy.updateCandidate, (_event, payload) => {
     const input = updateCandidateSchema.parse(payload)
+    const before = candidatesRepo.getCandidate(input.candidateId)
     candidatesRepo.updateCandidate(input)
+    if (before) anatomyQuizRepo.refreshPageQuestionGeometry(before.attachmentId, before.pageNumber)
   })
 
   ipcMain.handle(IpcChannels.anatomy.createManualCandidate, (_event, payload) => {
     const input = createManualCandidateSchema.parse(payload)
-    return candidatesRepo.createManualCandidate(input)
+    const id = candidatesRepo.createManualCandidate(input)
+    anatomyQuizRepo.refreshPageQuestionGeometry(input.attachmentId, input.pageNumber)
+    return id
   })
 
   ipcMain.handle(IpcChannels.anatomy.confirmCandidate, (_event, payload) => {
@@ -136,13 +184,49 @@ export function registerAnatomyHandlers(): void {
   // ve sai/du/gop nham, tranh de lai hang rac de mask den chong len o khac.
   ipcMain.handle(IpcChannels.anatomy.deleteCandidate, (_event, payload) => {
     const { candidateId } = candidateIdSchema.parse(payload)
+    const before = candidatesRepo.getCandidate(candidateId)
     anatomyQuizRepo.deleteQuestionByCandidateId(candidateId)
     candidatesRepo.deleteCandidate(candidateId)
+    if (before) anatomyQuizRepo.refreshPageQuestionGeometry(before.attachmentId, before.pageNumber)
   })
 
   ipcMain.handle(IpcChannels.anatomy.countConfirmedForAttachment, (_event, payload) => {
     const { attachmentId } = attachmentIdSchema.parse(payload)
     return anatomyQuizRepo.countConfirmedForAttachment(attachmentId)
+  })
+
+  ipcMain.handle(IpcChannels.anatomy.listQuestionSummaries, (_event, payload) => {
+    const { attachmentId } = attachmentIdSchema.parse(payload)
+    return anatomyQuizRepo.listQuestionSummaries(attachmentId)
+  })
+  ipcMain.handle(IpcChannels.anatomy.listStationSets, (_event, payload) => {
+    const { attachmentId } = attachmentIdSchema.parse(payload)
+    return anatomyQuizRepo.listStationSets(attachmentId)
+  })
+  ipcMain.handle(IpcChannels.anatomy.createStationSet, (_event, payload) =>
+    anatomyQuizRepo.createStationSet(stationSetSchema.parse(payload)))
+  ipcMain.handle(IpcChannels.anatomy.deleteStationSet, (_event, payload) => {
+    anatomyQuizRepo.deleteStationSet(stationSetIdSchema.parse(payload).stationSetId)
+  })
+  ipcMain.handle(IpcChannels.anatomy.saveAttemptProgress, (_event, payload) => {
+    anatomyQuizRepo.saveAttemptProgress(saveProgressSchema.parse(payload))
+  })
+  ipcMain.handle(IpcChannels.anatomy.resumeAttempt, (_event, payload) => {
+    return anatomyQuizRepo.resumeAttempt(attemptIdSchema.parse(payload).attemptId)
+  })
+  ipcMain.handle(IpcChannels.anatomy.getEligibility, async (_event, payload) => {
+    return analyzeAnatomyEligibility(attachmentIdSchema.parse(payload).attachmentId)
+  })
+  ipcMain.handle(IpcChannels.anatomy.resolveSourceChange, (_event, payload) => {
+    const input = resolveSourceChangeSchema.parse(payload)
+    anatomyEligibilityRepo.resolveSourceChange(input.attachmentId, input.isSimilar)
+  })
+  ipcMain.handle(IpcChannels.anatomy.setPageReview, (_event, payload) => {
+    candidatesRepo.setPageReview(pageReviewSchema.parse(payload))
+  })
+  ipcMain.handle(IpcChannels.anatomy.getPageReview, (_event, payload) => {
+    const input = attachmentPageSchema.parse(payload)
+    return candidatesRepo.getPageReview(input.attachmentId, input.pageNumber)
   })
 
   ipcMain.handle(IpcChannels.anatomy.checkAnswer, (_event, payload) => {
@@ -163,5 +247,11 @@ export function registerAnatomyHandlers(): void {
   ipcMain.handle(IpcChannels.anatomy.getAttemptReview, (_event, payload) => {
     const { attemptId } = attemptIdSchema.parse(payload)
     return anatomyQuizRepo.getAttemptReview(attemptId)
+  })
+  ipcMain.handle(IpcChannels.anatomy.listAttemptHistory, (_event, payload) => {
+    return anatomyQuizRepo.listAttemptHistory(attachmentIdSchema.parse(payload).attachmentId)
+  })
+  ipcMain.handle(IpcChannels.anatomy.deleteAttemptHistory, (_event, payload) => {
+    anatomyQuizRepo.deleteAttemptHistory(attemptIdSchema.parse(payload).attemptId)
   })
 }

@@ -12,8 +12,8 @@ describe('stripDiacritics', () => {
 })
 
 describe('normalizeForAnswerMatch', () => {
-  it('coi cau tra loi dung dau va khong dau la giong nhau', () => {
-    expect(normalizeForAnswerMatch('Niệu quản')).toBe(normalizeForAnswerMatch('nieu quan'))
+  it('giu dau tieng Viet khi so sanh', () => {
+    expect(normalizeForAnswerMatch('Niệu quản')).not.toBe(normalizeForAnswerMatch('nieu quan'))
   })
 
   it('khong phan biet hoa thuong', () => {

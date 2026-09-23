@@ -7,8 +7,10 @@ import {
   useCreateManualCandidate,
   useDeleteCandidate,
   useDetectAllPages,
+  useCancelDetectAllPages,
   useDetectPage,
   useRejectCandidate,
+  useUpdateCandidate,
   useUpdateQuestionAnswer
 } from '@renderer/queries/anatomyQuiz'
 import type { AnatomyLabelCandidate, Rect } from '@shared/types/anatomyQuiz'
@@ -52,12 +54,34 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
     pageNumber: number
     totalPages: number
   } | null>(null)
+  const [pageReviewed, setPageReviewed] = useState(false)
+  const [pageExcluded, setPageExcluded] = useState(false)
+  const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null)
+  const [editTool, setEditTool] = useState<'select' | 'add' | 'crop'>('select')
+  const [mergeTargetId, setMergeTargetId] = useState('')
+  const [regionFilter, setRegionFilter] = useState<'all' | AnatomyLabelCandidate['status'] | 'low'>('all')
+  const [previewRegion, setPreviewRegion] = useState(false)
 
   useEffect(() => {
     return window.api.anatomy.onDetectAllPagesProgress((p) => setBulkDetectProgress(p))
   }, [])
 
   const detectAllPages = useDetectAllPages(attachmentId)
+  const cancelDetectAllPages = useCancelDetectAllPages()
+  const autoScanStarted = useRef(false)
+
+  useEffect(() => {
+    if (autoScanStarted.current) return
+    autoScanStarted.current = true
+    detectAllPages.mutate(false)
+  }, [attachmentId])
+
+  useEffect(() => {
+    void window.api.anatomy.getPageReview({ attachmentId, pageNumber: currentPageNumber }).then((value) => {
+      setPageReviewed(value.reviewed)
+      setPageExcluded(value.excluded)
+    })
+  }, [attachmentId, currentPageNumber])
 
   const pageCount = usePageCount(attachmentId, scope?.type === 'document')
   const totalPages = pageCount.data ?? 0
@@ -69,6 +93,7 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
   const updateQuestionAnswer = useUpdateQuestionAnswer(attachmentId, currentPageNumber)
   const rejectCandidate = useRejectCandidate(attachmentId, currentPageNumber)
   const deleteCandidate = useDeleteCandidate(attachmentId, currentPageNumber)
+  const updateCandidate = useUpdateCandidate(attachmentId, currentPageNumber)
 
   const sortedList = useMemo(() => sortByReadingOrder(candidatesQuery.data ?? []), [candidatesQuery.data])
   const current = sortedList[currentRegionIndex] ?? null
@@ -88,7 +113,7 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
     setAnswerText(current?.status === 'confirmed' ? current.answerText ?? '' : current?.rawText.trim() ?? '')
     setAlternatesText(
       current?.status === 'confirmed' && current.acceptedAlternates
-        ? current.acceptedAlternates.join(', ')
+        ? current.acceptedAlternates.join('; ')
         : ''
     )
   }, [current?.id])
@@ -128,7 +153,10 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
     }
 
     positionedPageRef.current = currentPageNumber
-    if (style === 'back') {
+    // Khi nguoi dung chu dong mo/nhay/lui ve mot trang de SUA, bat dau tu
+    // vung dau tien de dap an cu duoc hien ngay. Chi luong quet lien tuc
+    // (sweep) moi uu tien vung pending chua xu ly.
+    if (style === 'jump' || style === 'back') {
       setCurrentRegionIndex(0)
       return
     }
@@ -208,7 +236,7 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
   const handleSave = (): void => {
     if (!current || answerText.trim() === '') return
     const acceptedAlternates = alternatesText
-      .split(',')
+      .split(';')
       .map((s) => s.trim())
       .filter(Boolean)
     if (current.status === 'confirmed') {
@@ -300,21 +328,26 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
                     disabled={detectAllPages.isPending}
                     onClick={() => {
                       setBulkDetectProgress(null)
-                      detectAllPages.mutate()
+                      detectAllPages.mutate(true)
                     }}
                   >
                     Dò trước vị trí vùng chữ cho toàn bộ tài liệu
                   </button>
                   {detectAllPages.isPending && (
-                    <p className="anatomy-candidate-empty">
+                    <div className="anatomy-candidate-empty">
                       {bulkDetectProgress
-                        ? `Đang dò trang ${bulkDetectProgress.pageNumber}/${bulkDetectProgress.totalPages}...`
+                        ? `Đang quét ${((bulkDetectProgress.pageNumber / bulkDetectProgress.totalPages) * 100).toFixed(3)}%`
                         : 'Đang bắt đầu...'}
-                    </p>
+                      <button type="button" className="btn-secondary" onClick={() => cancelDetectAllPages.mutate(attachmentId)}>
+                        Dừng quét
+                      </button>
+                    </div>
                   )}
                   {!detectAllPages.isPending && detectAllPages.isSuccess && (
                     <p className="anatomy-candidate-empty">
-                      Đã dò xong {detectAllPages.data.totalPages} trang.
+                      {detectAllPages.data.cancelled
+                        ? 'Đã dừng. Bấm quét lại để tiếp tục từ trang kế tiếp.'
+                        : `Đã dò xong ${detectAllPages.data.totalPages} trang.`}
                     </p>
                   )}
                 </div>
@@ -367,6 +400,9 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
   }
 
   if (phase === 'editingRegions') {
+    const selectedRegion = sortedList.find((candidate) => candidate.id === selectedRegionId) ?? null
+    const visibleRegions = sortedList.filter((candidate) => regionFilter === 'all' ||
+      (regionFilter === 'low' ? candidate.confidence !== null && candidate.confidence < 0.75 : candidate.status === regionFilter))
     return (
       <div className="quiz-play-overlay" role="dialog" aria-modal="true">
         <div className="lms-quiz">
@@ -382,22 +418,62 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
           </header>
           <div className="lms-quiz-body">
             <main className="lms-quiz-main anatomy-authoring-main">
-              <AnatomyPageReviewCanvas
-                attachmentId={attachmentId}
-                pageNumber={currentPageNumber}
-                candidates={sortedList}
-                mode="edit"
-                onDrawNewBox={handleDrawNewBox}
-                onSelect={(id) => {
-                  const c = sortedList.find((x) => x.id === id)
-                  if (!c) return
-                  if (c.status === 'confirmed') {
-                    setPendingDeleteCandidateId(id)
-                  } else {
-                    deleteCandidate.mutate(id)
-                  }
-                }}
-              />
+              <div className="anatomy-region-editor">
+                <div className="anatomy-region-tools">
+                  <select value={regionFilter} onChange={(event) => {
+                    setRegionFilter(event.target.value as typeof regionFilter); setSelectedRegionId(null); setPreviewRegion(false)
+                  }}>
+                    <option value="all">Tất cả vùng</option><option value="pending">Chưa duyệt</option>
+                    <option value="confirmed">Đã có đáp án</option><option value="rejected">Đã bỏ qua</option>
+                    <option value="low">Độ tin cậy thấp</option>
+                  </select>
+                  <button type="button" className={previewRegion ? 'btn-primary' : 'btn-secondary'} disabled={!selectedRegion}
+                    onClick={() => setPreviewRegion((value) => !value)}>Xem thử câu hỏi</button>
+                  <button type="button" className={editTool === 'select' ? 'btn-primary' : 'btn-secondary'} onClick={() => setEditTool('select')}>Chọn / di chuyển / đổi cỡ</button>
+                  <button type="button" className={editTool === 'add' ? 'btn-primary' : 'btn-secondary'} onClick={() => setEditTool('add')}>Vẽ vùng chữ mới</button>
+                  <button type="button" className={editTool === 'crop' ? 'btn-primary' : 'btn-secondary'} disabled={!selectedRegion} onClick={() => setEditTool('crop')}>Vẽ vùng crop cho câu</button>
+                  <button type="button" className="btn-secondary" disabled={!selectedRegion?.cropBox} onClick={() => selectedRegion && updateCandidate.mutate({ candidateId: selectedRegion.id, cropBox: null })}>Bỏ crop</button>
+                  <button type="button" className="btn-secondary" disabled={!selectedRegion} onClick={() => setEditTool('add')} title="Vẽ thêm một vùng mới, sau đó thu nhỏ vùng cũ thành phần còn lại">Tách vùng</button>
+                  <select value={mergeTargetId} onChange={(event) => setMergeTargetId(event.target.value)} disabled={!selectedRegion}>
+                    <option value="">Chọn vùng để gộp…</option>
+                    {sortedList.filter((candidate) => candidate.id !== selectedRegionId).map((candidate) =>
+                      <option key={candidate.id} value={candidate.id}>{candidate.rawText || `Vùng ${candidate.id.slice(0, 6)}`}</option>)}
+                  </select>
+                  <button type="button" className="btn-secondary" disabled={!selectedRegion || !mergeTargetId} onClick={() => {
+                    const other = sortedList.find((candidate) => candidate.id === mergeTargetId)
+                    if (!selectedRegion || !other) return
+                    updateCandidate.mutate({
+                      candidateId: selectedRegion.id,
+                      rawText: `${selectedRegion.rawText} ${other.rawText}`.trim(),
+                      labelBox: {
+                        x0: Math.min(selectedRegion.labelBox.x0, other.labelBox.x0),
+                        y0: Math.min(selectedRegion.labelBox.y0, other.labelBox.y0),
+                        x1: Math.max(selectedRegion.labelBox.x1, other.labelBox.x1),
+                        y1: Math.max(selectedRegion.labelBox.y1, other.labelBox.y1)
+                      }
+                    }, { onSuccess: () => deleteCandidate.mutate(other.id) })
+                    setMergeTargetId('')
+                  }}>Gộp</button>
+                  <button type="button" className="btn-danger" disabled={!selectedRegion} onClick={() => {
+                    if (!selectedRegion) return
+                    if (selectedRegion.status === 'confirmed') setPendingDeleteCandidateId(selectedRegion.id)
+                    else deleteCandidate.mutate(selectedRegion.id)
+                  }}>Xóa vùng</button>
+                </div>
+                <AnatomyPageReviewCanvas
+                  attachmentId={attachmentId}
+                  pageNumber={currentPageNumber}
+                  candidates={previewRegion ? sortedList : visibleRegions}
+                  mode={previewRegion ? 'preview' : 'edit'}
+                  editTool={editTool}
+                  currentCandidateId={selectedRegionId}
+                  selectedId={selectedRegionId}
+                  onDrawNewBox={handleDrawNewBox}
+                  onSelect={setSelectedRegionId}
+                  onUpdateBox={(candidateId, labelBox) => updateCandidate.mutate({ candidateId, labelBox })}
+                  onSetCrop={(cropBox) => selectedRegion && updateCandidate.mutate({ candidateId: selectedRegion.id, cropBox })}
+                />
+              </div>
             </main>
           </div>
         </div>
@@ -456,6 +532,20 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
             <button type="button" className="btn-secondary" onClick={() => setPhase('editingRegions')}>
               Sửa vùng trên trang này
             </button>
+            <button type="button" className={pageReviewed ? 'btn-primary' : 'btn-secondary'} onClick={() => {
+              const next = !pageReviewed
+              setPageReviewed(next)
+              void window.api.anatomy.setPageReview({ attachmentId, pageNumber: currentPageNumber, reviewed: next })
+            }}>
+              {pageReviewed ? 'Đã duyệt đầy đủ' : 'Đánh dấu đã duyệt'}
+            </button>
+            <button type="button" className={pageExcluded ? 'btn-danger' : 'btn-secondary'} onClick={() => {
+              const next = !pageExcluded
+              setPageExcluded(next)
+              void window.api.anatomy.setPageReview({ attachmentId, pageNumber: currentPageNumber, excluded: next })
+            }}>
+              {pageExcluded ? 'Đang loại khỏi đề' : 'Loại trang khỏi đề'}
+            </button>
             <button type="button" className="btn-secondary" onClick={onExit}>
               <X size={14} /> Thoát
             </button>
@@ -483,11 +573,11 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
                     <input type="text" value={answerText} onChange={(e) => setAnswerText(e.target.value)} />
                   </label>
                   <label>
-                    Đáp án chấp nhận được khác (ngăn bằng dấu phẩy)
+                    Đáp án chấp nhận được khác (ngăn bằng dấu ;)
                     <input
                       type="text"
                       value={alternatesText}
-                      placeholder="vd: xoang thận, bể thận đoạn trên"
+                      placeholder="vd: xoang thận; bể thận đoạn trên"
                       onChange={(e) => setAlternatesText(e.target.value)}
                     />
                   </label>

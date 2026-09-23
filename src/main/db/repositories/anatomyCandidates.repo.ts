@@ -19,6 +19,8 @@ interface CandidateRow {
   ref_height: number
   answer_text: string | null
   accepted_alternates_json: string | null
+  confidence: number | null
+  crop_box_json: string | null
 }
 
 function toCandidate(row: CandidateRow): AnatomyLabelCandidate {
@@ -34,7 +36,9 @@ function toCandidate(row: CandidateRow): AnatomyLabelCandidate {
     answerText: row.answer_text,
     acceptedAlternates: row.accepted_alternates_json
       ? (JSON.parse(row.accepted_alternates_json) as string[])
-      : null
+      : null,
+    confidence: row.confidence,
+    cropBox: row.crop_box_json ? (JSON.parse(row.crop_box_json) as Rect) : null
   }
 }
 
@@ -45,6 +49,7 @@ export interface NewAnatomyLabelCandidate {
   labelBox: Rect
   refWidth: number
   refHeight: number
+  confidence?: number | null
 }
 
 // Thay toan bo candidate cua 1 trang bang ket qua do moi nhat - trang duoc mo
@@ -63,8 +68,8 @@ export function replaceDetectedCandidates(
   )
   const ins = db.prepare(
     `INSERT INTO anatomy_label_candidates
-      (id, attachment_id, page_number, raw_text, label_box_json, ref_width, ref_height, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`
+      (id, attachment_id, page_number, raw_text, label_box_json, ref_width, ref_height, status, confidence)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`
   )
 
   const ids: string[] = []
@@ -73,7 +78,7 @@ export function replaceDetectedCandidates(
     for (const c of detected) {
       const id = randomUUID()
       ids.push(id)
-      ins.run(id, c.attachmentId, c.pageNumber, c.rawText, JSON.stringify(c.labelBox), c.refWidth, c.refHeight)
+      ins.run(id, c.attachmentId, c.pageNumber, c.rawText, JSON.stringify(c.labelBox), c.refWidth, c.refHeight, c.confidence ?? null)
     }
   })
   tx()
@@ -148,12 +153,37 @@ export function updateCandidate(input: UpdateAnatomyCandidateInput): void {
 
   const rawText = input.rawText ?? current.rawText
   const labelBox = input.labelBox ?? current.labelBox
+  const cropBox = input.cropBox === undefined ? current.cropBox : input.cropBox
 
   db.prepare(
     `UPDATE anatomy_label_candidates
-     SET raw_text = ?, label_box_json = ?, updated_at = datetime('now')
+     SET raw_text = ?, label_box_json = ?, crop_box_json = ?, updated_at = datetime('now')
      WHERE id = ?`
-  ).run(rawText, JSON.stringify(labelBox), input.candidateId)
+  ).run(rawText, JSON.stringify(labelBox), cropBox ? JSON.stringify(cropBox) : null, input.candidateId)
+}
+
+export function setPageReview(input: { attachmentId: string; pageNumber: number; reviewed?: boolean; excluded?: boolean }): void {
+  const current = getDb().prepare(
+    'SELECT reviewed, excluded FROM anatomy_page_reviews WHERE attachment_id = ? AND page_number = ?'
+  ).get(input.attachmentId, input.pageNumber) as { reviewed: number; excluded: number } | undefined
+  getDb().prepare(
+    `INSERT INTO anatomy_page_reviews (attachment_id, page_number, reviewed, excluded, updated_at)
+     VALUES (?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(attachment_id, page_number) DO UPDATE SET
+       reviewed = excluded.reviewed, excluded = excluded.excluded, updated_at = datetime('now')`
+  ).run(
+    input.attachmentId,
+    input.pageNumber,
+    input.reviewed === undefined ? (current?.reviewed ?? 0) : input.reviewed ? 1 : 0,
+    input.excluded === undefined ? (current?.excluded ?? 0) : input.excluded ? 1 : 0
+  )
+}
+
+export function getPageReview(attachmentId: string, pageNumber: number): { reviewed: boolean; excluded: boolean } {
+  const row = getDb().prepare(
+    'SELECT reviewed, excluded FROM anatomy_page_reviews WHERE attachment_id = ? AND page_number = ?'
+  ).get(attachmentId, pageNumber) as { reviewed: number; excluded: number } | undefined
+  return { reviewed: row?.reviewed === 1, excluded: row?.excluded === 1 }
 }
 
 export function setCandidateStatus(candidateId: string, status: AnatomyCandidateStatus): void {

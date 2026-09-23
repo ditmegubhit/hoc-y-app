@@ -107,6 +107,8 @@ const api: AppApi = {
   anatomy: {
     detectPage: (input) => ipcRenderer.invoke(IpcChannels.anatomy.detectPage, input),
     detectAllPages: (input) => ipcRenderer.invoke(IpcChannels.anatomy.detectAllPages, input),
+    cancelDetectAllPages: (attachmentId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.cancelDetectAllPages, { attachmentId }),
     onDetectAllPagesProgress: (callback) => {
       const listener = (
         _event: Electron.IpcRendererEvent,
@@ -129,11 +131,31 @@ const api: AppApi = {
       ipcRenderer.invoke(IpcChannels.anatomy.deleteCandidate, { candidateId }),
     countConfirmedForAttachment: (attachmentId) =>
       ipcRenderer.invoke(IpcChannels.anatomy.countConfirmedForAttachment, { attachmentId }),
+    listQuestionSummaries: (attachmentId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.listQuestionSummaries, { attachmentId }),
+    listStationSets: (attachmentId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.listStationSets, { attachmentId }),
+    createStationSet: (input) => ipcRenderer.invoke(IpcChannels.anatomy.createStationSet, input),
+    deleteStationSet: (stationSetId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.deleteStationSet, { stationSetId }),
+    saveAttemptProgress: (input) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.saveAttemptProgress, input),
+    resumeAttempt: (attemptId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.resumeAttempt, { attemptId }),
+    getEligibility: (attachmentId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.getEligibility, { attachmentId }),
+    resolveSourceChange: (input) => ipcRenderer.invoke(IpcChannels.anatomy.resolveSourceChange, input),
+    setPageReview: (input) => ipcRenderer.invoke(IpcChannels.anatomy.setPageReview, input),
+    getPageReview: (input) => ipcRenderer.invoke(IpcChannels.anatomy.getPageReview, input),
     checkAnswer: (input) => ipcRenderer.invoke(IpcChannels.anatomy.checkAnswer, input),
     startAttempt: (input) => ipcRenderer.invoke(IpcChannels.anatomy.startAttempt, input),
     submitAttempt: (input) => ipcRenderer.invoke(IpcChannels.anatomy.submitAttempt, input),
     getAttemptReview: (attemptId) =>
-      ipcRenderer.invoke(IpcChannels.anatomy.getAttemptReview, { attemptId })
+      ipcRenderer.invoke(IpcChannels.anatomy.getAttemptReview, { attemptId }),
+    listAttemptHistory: (attachmentId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.listAttemptHistory, { attachmentId }),
+    deleteAttemptHistory: (attemptId) =>
+      ipcRenderer.invoke(IpcChannels.anatomy.deleteAttemptHistory, { attemptId })
   }
 }
 

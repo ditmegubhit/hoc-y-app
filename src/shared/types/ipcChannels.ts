@@ -74,6 +74,7 @@ export const IpcChannels = {
     detectPage: 'anatomy:detectPage',
     detectAllPages: 'anatomy:detectAllPages',
     detectAllPagesProgress: 'anatomy:detectAllPagesProgress',
+    cancelDetectAllPages: 'anatomy:cancelDetectAllPages',
     listCandidatesForPage: 'anatomy:listCandidatesForPage',
     updateCandidate: 'anatomy:updateCandidate',
     createManualCandidate: 'anatomy:createManualCandidate',
@@ -82,9 +83,21 @@ export const IpcChannels = {
     rejectCandidate: 'anatomy:rejectCandidate',
     deleteCandidate: 'anatomy:deleteCandidate',
     countConfirmedForAttachment: 'anatomy:countConfirmedForAttachment',
+    listQuestionSummaries: 'anatomy:listQuestionSummaries',
+    listStationSets: 'anatomy:listStationSets',
+    createStationSet: 'anatomy:createStationSet',
+    deleteStationSet: 'anatomy:deleteStationSet',
+    saveAttemptProgress: 'anatomy:saveAttemptProgress',
+    resumeAttempt: 'anatomy:resumeAttempt',
+    getEligibility: 'anatomy:getEligibility',
+    resolveSourceChange: 'anatomy:resolveSourceChange',
+    setPageReview: 'anatomy:setPageReview',
+    getPageReview: 'anatomy:getPageReview',
     checkAnswer: 'anatomy:checkAnswer',
     startAttempt: 'anatomy:startAttempt',
     submitAttempt: 'anatomy:submitAttempt',
-    getAttemptReview: 'anatomy:getAttemptReview'
+    getAttemptReview: 'anatomy:getAttemptReview',
+    listAttemptHistory: 'anatomy:listAttemptHistory',
+    deleteAttemptHistory: 'anatomy:deleteAttemptHistory'
   }
 } as const

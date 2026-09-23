@@ -10,18 +10,32 @@ describe('computeAnatomyAnswerResult', () => {
     expect(res.isCorrect).toBe(true)
   })
 
-  it('khop gan dung: khong dau, khac hoa thuong, khoang trang thua', () => {
+  it('khong phan biet hoa thuong va khoang trang thua, nhung van giu dau', () => {
     const res = computeAnatomyAnswerResult(
       { answerText: 'Niệu quản', acceptedAlternates: [] },
-      '  nieu QUAN  '
+      '  NIỆU QUẢN  '
     )
     expect(res.isCorrect).toBe(true)
+  })
+
+  it('khong chap nhan cau tra loi mat dau', () => {
+    expect(computeAnatomyAnswerResult(
+      { answerText: 'Niệu quản', acceptedAlternates: [] },
+      'nieu quan'
+    ).isCorrect).toBe(false)
+  })
+
+  it('mo rong viet tat y khoa va bo gach ngang', () => {
+    expect(computeAnatomyAnswerResult(
+      { answerText: 'Động mạch thận', acceptedAlternates: [] },
+      'ĐM-thận'
+    ).isCorrect).toBe(true)
   })
 
   it('khop dap an chap nhan duoc (accepted alternates)', () => {
     const res = computeAnatomyAnswerResult(
       { answerText: 'Bể thận', acceptedAlternates: ['Xoang thận', 'Bể thận đoạn trên'] },
-      'xoang than'
+      'xoang thận'
     )
     expect(res.isCorrect).toBe(true)
   })

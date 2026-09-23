@@ -5,6 +5,7 @@ import { replaceDetectedCandidates } from '../../db/repositories/anatomyCandidat
 import { renderPdfPageAsPng, RENDER_SCALE } from '../textExtraction/pdfRender'
 import { recognizeImageLines } from './paddleOcrClient'
 import { clusterWordsIntoLabelBoxes, type LabelCluster, type RenderTarget } from './labelDetection'
+import * as anatomyQuizRepo from '../../db/repositories/anatomyQuiz.repo'
 
 // Diem tin cay toi thieu de coi 1 dong PaddleOCR doc duoc la chu thuc su, chu
 // khong phai nhieu tu hoa van/nen anh chup (vd chu, xuong, ban ghi) - uoc
@@ -46,9 +47,28 @@ export async function detectLabelsForPage(attachmentId: string, pageNumber: numb
   const paddleLines = await recognizeImageLines(pngBuffer)
   const paddleClusters: LabelCluster[] = paddleLines
     .filter((l) => l.score >= PADDLE_OCR_MIN_SCORE)
-    .map((l) => ({ box: l.box, text: l.text, coordSpace: 'image_pixel' }))
+    .map((l) => ({ box: l.box, text: l.text, coordSpace: 'image_pixel', confidence: l.score }))
 
-  const clusters = [...existingClusters, ...paddleClusters]
+  // PDF text va OCR co the thay cung mot nhan. Loai o chong lan lon, uu tien
+  // text layer vi noi dung/dau tieng Viet chinh xac hon.
+  const overlapRatio = (a: LabelCluster, b: LabelCluster): number => {
+    const x0 = Math.max(a.box.x0, b.box.x0)
+    const y0 = Math.max(a.box.y0, b.box.y0)
+    const x1 = Math.min(a.box.x1, b.box.x1)
+    const y1 = Math.min(a.box.y1, b.box.y1)
+    const intersection = Math.max(0, x1 - x0) * Math.max(0, y1 - y0)
+    const smaller = Math.min(
+      Math.max(1, (a.box.x1 - a.box.x0) * (a.box.y1 - a.box.y0)),
+      Math.max(1, (b.box.x1 - b.box.x0) * (b.box.y1 - b.box.y0))
+    )
+    return intersection / smaller
+  }
+  const clusters = [...existingClusters]
+  for (const candidate of paddleClusters) {
+    if (!clusters.some((existingCluster) => overlapRatio(existingCluster, candidate) >= 0.7)) {
+      clusters.push(candidate)
+    }
+  }
 
   replaceDetectedCandidates(
     attachmentId,
@@ -59,7 +79,11 @@ export async function detectLabelsForPage(attachmentId: string, pageNumber: numb
       rawText: c.text,
       labelBox: c.box,
       refWidth: target.width,
-      refHeight: target.height
+      refHeight: target.height,
+      confidence: c.confidence ?? (c.coordSpace === 'pdf_point' ? 1 : null)
     }))
   )
+
+  // Ban V2: nhap tu dong duoc dung ngay; nguoi dung chi sua nhung cau sai.
+  anatomyQuizRepo.ensureAutoQuestionsForPage(attachmentId, attachment.lessonId, pageNumber)
 }
