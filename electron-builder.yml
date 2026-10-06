@@ -6,6 +6,15 @@ directories:
   buildResources: resources
 files:
   - out/**/*
+  - '!out/main/smoke.js'
+  - '!out/main/anatomySmoke.js'
+  - '!out/main/recognizerBench.js'
+  - '!out/main/practiceUiSmoke.js'
+  - '!out/main/practiceRescan.js'
+  # onnxruntime-node: chi giu ban Windows x64 (bo Linux/macOS/arm64 de nhe goi ~140MB).
+  - '!node_modules/onnxruntime-node/bin/napi-v6/darwin/**'
+  - '!node_modules/onnxruntime-node/bin/napi-v6/linux/**'
+  - '!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**'
   - package.json
 extraResources:
   - from: resources/tessdata
@@ -14,8 +23,12 @@ extraResources:
     to: scripts
   - from: resources/paddleocr/PaddleOCR-json_v1.4.1
     to: paddleocr
+  - from: resources/vietocr
+    to: vietocr
 asarUnpack:
   - '**/*.node'
+  # onnxruntime.dll/DirectML.dll phai nam canh onnxruntime_binding.node ngoai asar.
+  - node_modules/onnxruntime-node/bin/napi-v6/win32/x64/**
 win:
   icon: resources/icon.ico
   target:

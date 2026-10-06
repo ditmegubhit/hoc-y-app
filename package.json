@@ -12,6 +12,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "electron-vite build && electron out/main/smoke.js",
+    "ocr:bench": "electron-vite build && electron out/main/ocrBench.js",
+    "ocr:bench:rec": "electron-vite build && electron out/main/recognizerBench.js",
+    "practice:debug": "electron-vite build && electron out/main/practiceVisualDebug.js",
+    "practice:rescan": "electron-vite build && electron out/main/practiceRescan.js",
+    "practice:smoke": "electron-vite build && electron out/main/practiceUiSmoke.js",
     "dist": "electron-vite build && electron-builder"
   },
   "devDependencies": {
@@ -46,6 +51,7 @@
     "jszip": "3.10.1",
     "lucide-react": "1.32.0",
     "mammoth": "1.12.1",
+    "onnxruntime-node": "1.30.0",
     "p-limit": "^3.1.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "6.2.108",

@@ -8,6 +8,7 @@ import { getPageCount } from '../../services/attachmentView.service'
 import { getDb } from '../../db'
 import { analyzeAnatomyEligibility } from '../../services/anatomy/eligibility'
 import * as anatomyEligibilityRepo from '../../db/repositories/anatomyEligibility.repo'
+import { readCandidateWithAi } from '../../services/anatomy/readLabelWithAi'
 
 const cancelledScans = new Set<string>()
 
@@ -102,6 +103,9 @@ const submitAttemptSchema = z.object({
 const attemptIdSchema = z.object({ attemptId: z.string() })
 
 export function registerAnatomyHandlers(): void {
+  ipcMain.handle(IpcChannels.anatomy.readCandidateText, (_event, payload) => {
+    return readCandidateWithAi(candidateIdSchema.parse(payload).candidateId)
+  })
   ipcMain.handle(IpcChannels.anatomy.detectPage, async (_event, payload) => {
     const { attachmentId, pageNumber } = attachmentPageSchema.parse(payload)
     await detectLabelsForPage(attachmentId, pageNumber)

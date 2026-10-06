@@ -95,7 +95,8 @@ function isUsableAutomaticLabel(raw: string): boolean {
 export function ensureAutoQuestionsForPage(attachmentId: string, lessonId: string, pageNumber: number): void {
   const db = getDb()
   const candidates = candidatesRepo.listCandidatesForPage(attachmentId, pageNumber)
-    .filter((candidate) => candidate.status === 'pending' && isUsableAutomaticLabel(candidate.rawText))
+    .filter((candidate) => candidate.status === 'pending' && candidate.confidence !== null &&
+      candidate.confidence >= 0.8 && isUsableAutomaticLabel(candidate.rawText))
   const insert = db.prepare(
     `INSERT INTO anatomy_questions
       (id, attachment_id, lesson_id, page_number, candidate_id, answer_text,

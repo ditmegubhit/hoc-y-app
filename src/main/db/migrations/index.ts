@@ -19,6 +19,8 @@ import * as m018 from './018_anatomy_practical'
 import * as m019 from './019_anatomy_manual_target'
 import * as m020 from './020_anatomy_station_v2'
 import * as m021 from './021_anatomy_source_confirmation'
+import * as m022 from './022_practice_area'
+import * as m023 from './023_practice_region_reason'
 
 export interface Migration {
   id: string
@@ -48,5 +50,7 @@ export const migrations: Migration[] = [
   m018,
   m019,
   m020,
-  m021
+  m021,
+  m022,
+  m023
 ]

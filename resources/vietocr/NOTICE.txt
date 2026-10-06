@@ -1,0 +1,9 @@
+VietOCR (vgg_transformer) - nhan dang chu tieng Viet, ban ONNX fp16.
+
+Tac gia mo hinh: Pham Binh Cuong (pbcquoc), https://github.com/pbcquoc/vietocr  - giay phep Apache-2.0.
+Ban chuyen ONNX (encoder_fp16.onnx, decoder_fp16.onnx, vocab.txt) lay tu
+https://huggingface.co/dzngo/vietocr-models (thu muc vietocr/), kiem chung cung ket qua voi ban ONNX fp32
+https://huggingface.co/vemines/vietocr-onnx (MIT) tren bo do noi bo.
+Kich thuoc: encoder 56.8 MB + decoder 20.2 MB.
+Chi la du lieu mo hinh (khong chay file thuc thi). Duoc nap boi onnxruntime-node (MIT) trong
+src/main/services/ocr-vi/vietocrOnnx.ts.

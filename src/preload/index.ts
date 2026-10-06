@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IpcChannels } from '../shared/types/ipcChannels'
 import type { AppApi } from '../shared/types/api'
 
@@ -105,6 +105,7 @@ const api: AppApi = {
     pickImage: () => ipcRenderer.invoke(IpcChannels.notes.pickImage)
   },
   anatomy: {
+    readCandidateText: (candidateId) => ipcRenderer.invoke(IpcChannels.anatomy.readCandidateText, { candidateId }),
     detectPage: (input) => ipcRenderer.invoke(IpcChannels.anatomy.detectPage, input),
     detectAllPages: (input) => ipcRenderer.invoke(IpcChannels.anatomy.detectAllPages, input),
     cancelDetectAllPages: (attachmentId) =>
@@ -156,6 +157,68 @@ const api: AppApi = {
       ipcRenderer.invoke(IpcChannels.anatomy.listAttemptHistory, { attachmentId }),
     deleteAttemptHistory: (attemptId) =>
       ipcRenderer.invoke(IpcChannels.anatomy.deleteAttemptHistory, { attemptId })
+  },
+  practice: {
+    getPathForFile: (file) => webUtils.getPathForFile(file),
+    listNodes: () => ipcRenderer.invoke(IpcChannels.practice.listNodes),
+    createFolder: (input) => ipcRenderer.invoke(IpcChannels.practice.createFolder, input),
+    renameNode: (input) => ipcRenderer.invoke(IpcChannels.practice.renameNode, input),
+    moveNode: (input) => ipcRenderer.invoke(IpcChannels.practice.moveNode, input),
+    deleteNode: (id) => ipcRenderer.invoke(IpcChannels.practice.deleteNode, { id }),
+    search: (keyword) => ipcRenderer.invoke(IpcChannels.practice.search, { keyword }),
+    pickAndAddFiles: (parentId) => ipcRenderer.invoke(IpcChannels.practice.pickAndAddFiles, { parentId }),
+    addFilesFromPaths: (parentId, paths) =>
+      ipcRenderer.invoke(IpcChannels.practice.addFilesFromPaths, { parentId, paths }),
+    getFile: (fileId) => ipcRenderer.invoke(IpcChannels.practice.getFile, { fileId }),
+    updateFileSettings: (input) => ipcRenderer.invoke(IpcChannels.practice.updateFileSettings, input),
+    resetRegionColors: (input) => ipcRenderer.invoke(IpcChannels.practice.resetRegionColors, input),
+    getSourceStatus: (fileId) => ipcRenderer.invoke(IpcChannels.practice.getSourceStatus, { fileId }),
+    syncSource: (fileId) => ipcRenderer.invoke(IpcChannels.practice.syncSource, { fileId }),
+    resolveSourceChange: (input) => ipcRenderer.invoke(IpcChannels.practice.resolveSourceChange, input),
+    onFilesUpdated: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: { fileId: string }): void =>
+        callback(payload.fileId)
+      ipcRenderer.on(IpcChannels.practice.filesUpdated, listener)
+      return () => ipcRenderer.removeListener(IpcChannels.practice.filesUpdated, listener)
+    },
+    scanFile: (input) => ipcRenderer.invoke(IpcChannels.practice.scanFile, input),
+    cancelScan: (fileId) => ipcRenderer.invoke(IpcChannels.practice.cancelScan, { fileId }),
+    getScanState: (fileId) => ipcRenderer.invoke(IpcChannels.practice.getScanState, { fileId }),
+    onScanProgress: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: Parameters<typeof callback>[0]
+      ): void => callback(payload)
+      ipcRenderer.on(IpcChannels.practice.scanProgress, listener)
+      return () => ipcRenderer.removeListener(IpcChannels.practice.scanProgress, listener)
+    },
+    listRegionsForPage: (input) => ipcRenderer.invoke(IpcChannels.practice.listRegionsForPage, input),
+    listRegionsForFile: (fileId) => ipcRenderer.invoke(IpcChannels.practice.listRegionsForFile, { fileId }),
+    createRegion: (input) => ipcRenderer.invoke(IpcChannels.practice.createRegion, input),
+    updateRegion: (input) => ipcRenderer.invoke(IpcChannels.practice.updateRegion, input),
+    deleteRegion: (id) => ipcRenderer.invoke(IpcChannels.practice.deleteRegion, { id }),
+    restoreRegion: (region) => ipcRenderer.invoke(IpcChannels.practice.restoreRegion, region),
+    readRegionWithAi: (regionId) => ipcRenderer.invoke(IpcChannels.practice.readRegionWithAi, { regionId }),
+    readPageWithAi: (input) => ipcRenderer.invoke(IpcChannels.practice.readPageWithAi, input),
+    listPageStates: (fileId) => ipcRenderer.invoke(IpcChannels.practice.listPageStates, { fileId }),
+    setPageReview: (input) => ipcRenderer.invoke(IpcChannels.practice.setPageReview, input),
+    listQuestionSummaries: (fileId) => ipcRenderer.invoke(IpcChannels.practice.listQuestionSummaries, { fileId }),
+    pickRandomQuestions: (input) => ipcRenderer.invoke(IpcChannels.practice.pickRandomQuestions, input),
+    listStationSets: (fileId) => ipcRenderer.invoke(IpcChannels.practice.listStationSets, { fileId }),
+    createStationSet: (input) => ipcRenderer.invoke(IpcChannels.practice.createStationSet, input),
+    deleteStationSet: (stationSetId) =>
+      ipcRenderer.invoke(IpcChannels.practice.deleteStationSet, { stationSetId }),
+    startAttempt: (input) => ipcRenderer.invoke(IpcChannels.practice.startAttempt, input),
+    saveAttemptProgress: (input) => ipcRenderer.invoke(IpcChannels.practice.saveAttemptProgress, input),
+    resumeAttempt: (attemptId) => ipcRenderer.invoke(IpcChannels.practice.resumeAttempt, { attemptId }),
+    findActiveAttempt: (fileId) => ipcRenderer.invoke(IpcChannels.practice.findActiveAttempt, { fileId }),
+    checkAnswer: (input) => ipcRenderer.invoke(IpcChannels.practice.checkAnswer, input),
+    submitAttempt: (input) => ipcRenderer.invoke(IpcChannels.practice.submitAttempt, input),
+    getAttemptReview: (attemptId) => ipcRenderer.invoke(IpcChannels.practice.getAttemptReview, { attemptId }),
+    listAttemptHistory: (fileId) => ipcRenderer.invoke(IpcChannels.practice.listAttemptHistory, { fileId }),
+    deleteAttemptHistory: (attemptId) =>
+      ipcRenderer.invoke(IpcChannels.practice.deleteAttemptHistory, { attemptId }),
+    createReviewSet: (attemptId) => ipcRenderer.invoke(IpcChannels.practice.createReviewSet, { attemptId })
   }
 }
 

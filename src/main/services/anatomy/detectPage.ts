@@ -4,38 +4,19 @@ import { getWordPositions } from '../../db/repositories/wordPositions.repo'
 import { replaceDetectedCandidates } from '../../db/repositories/anatomyCandidates.repo'
 import { renderPdfPageAsPng, RENDER_SCALE } from '../textExtraction/pdfRender'
 import { recognizeImageLines } from './paddleOcrClient'
-import { clusterWordsIntoLabelBoxes, type LabelCluster, type RenderTarget } from './labelDetection'
+import { clusterWordsIntoLabelBoxes, clusterLabelFragments, type LabelCluster, type RenderTarget } from './labelDetection'
+import { rereadVietnameseLines } from './vietnameseOcr'
+import { suggestVietnameseLabel } from './vietnameseLabels'
 import * as anatomyQuizRepo from '../../db/repositories/anatomyQuiz.repo'
 
-// Diem tin cay toi thieu de coi 1 dong PaddleOCR doc duoc la chu thuc su, chu
-// khong phai nhieu tu hoa van/nen anh chup (vd chu, xuong, ban ghi) - uoc
-// luong ban dau tu quan sat thuc te, co the can tinh lai.
-const PADDLE_OCR_MIN_SCORE = 0.55
-
-/**
- * Do vi tri O CHU tren 1 trang, luu thanh candidate cho man hinh soan cau
- * hoi. Goi khi tac gia mo 1 trang trong man hinh soan (theo yeu cau, khong
- * phai job nen). Chi tim VI TRI CAN CHE - KHONG doan cau hoi/dap an (tac gia
- * tu chon 1 o + tu go dap an trong man hinh soan, xem AnatomyCandidateSidebar).
- *
- * Nguon o chu gom 2 phan:
- * 1. word_positions co san, CHI LAY loai 'pdf_point' (text layer PDF that,
- *    nhan in san go rieng) - gom cum qua clusterWordsIntoLabelBoxes vi pdf.js
- *    co the tach 1 nhan thanh nhieu item. BO QUA loai 'image_pixel' (ket qua
- *    Tesseract cu tu pipeline trich xuat chung cho trang scan) - toan la
- *    nhieu vun tu nen anh chup (da kiem chung tren du lieu that), PaddleOCR
- *    o (2) lam lai viec nay tot hon han nen khong can giu ban cu.
- * 2. PaddleOCR-json (deep learning, xem paddleOcrClient.ts) chay lai TRUC
- *    TIEP tren toan bo trang - phat hien duong bao (det model) gom duoc CA
- *    CUM/DONG chu thanh 1 o hoan chinh tot hon Tesseract rat nhieu tren anh
- *    chup chu viet tay. Loi 'text' nhan dien duoc chi la GOI Y THO (dict
- *    khong co dau tieng Viet) - tac gia tu sua lai khi go dap an.
- */
-export async function detectLabelsForPage(attachmentId: string, pageNumber: number): Promise<void> {
-  const attachment = getAttachment(attachmentId)
-  if (!attachment) throw new Error('Khong tim thay file dinh kem.')
-
-  const pngBuffer = await renderPdfPageAsPng(attachment.storedPath, pageNumber, RENDER_SCALE)
+/** Tinh cum nhan cua 1 trang (khong ghi DB): text layer PDF + PaddleOCR + Tesseract.
+ * Tach rieng de bo do OCR (ocrBench) dung lai dung pipeline that. */
+export async function detectLabelClustersForPage(
+  pdfPath: string,
+  attachmentId: string,
+  pageNumber: number
+): Promise<{ clusters: LabelCluster[]; target: RenderTarget }> {
+  const pngBuffer = await renderPdfPageAsPng(pdfPath, pageNumber, RENDER_SCALE)
   const image = await loadImage(pngBuffer)
   const target: RenderTarget = { scale: RENDER_SCALE, width: image.width, height: image.height }
 
@@ -45,9 +26,10 @@ export async function detectLabelsForPage(attachmentId: string, pageNumber: numb
   const existingClusters = clusterWordsIntoLabelBoxes(existing, target)
 
   const paddleLines = await recognizeImageLines(pngBuffer)
-  const paddleClusters: LabelCluster[] = paddleLines
-    .filter((l) => l.score >= PADDLE_OCR_MIN_SCORE)
-    .map((l) => ({ box: l.box, text: l.text, coordSpace: 'image_pixel', confidence: l.score }))
+  const readableLines = await rereadVietnameseLines(pngBuffer, paddleLines.filter((line) => line.score >= 0.2))
+  const paddleClusters = clusterLabelFragments(readableLines.map((l): LabelCluster =>
+    ({ box: l.box, text: l.text, coordSpace: 'image_pixel', confidence: l.score })))
+    .map((cluster) => ({ ...cluster, text: suggestVietnameseLabel(cluster.text) ?? cluster.text }))
 
   // PDF text va OCR co the thay cung mot nhan. Loai o chong lan lon, uu tien
   // text layer vi noi dung/dau tieng Viet chinh xac hon.
@@ -69,6 +51,17 @@ export async function detectLabelsForPage(attachmentId: string, pageNumber: numb
       clusters.push(candidate)
     }
   }
+  return { clusters, target }
+}
+
+/** Detect label regions, join PDF/OCR fragments, and reread detector crops
+ * with Vietnamese OCR. Only confident readings become automatic questions;
+ * uncertain labels remain available for author review and optional AI reading. */
+export async function detectLabelsForPage(attachmentId: string, pageNumber: number): Promise<void> {
+  const attachment = getAttachment(attachmentId)
+  if (!attachment) throw new Error('Khong tim thay file dinh kem.')
+
+  const { clusters, target } = await detectLabelClustersForPage(attachment.storedPath, attachmentId, pageNumber)
 
   replaceDetectedCandidates(
     attachmentId,
@@ -86,4 +79,5 @@ export async function detectLabelsForPage(attachmentId: string, pageNumber: numb
 
   // Ban V2: nhap tu dong duoc dung ngay; nguoi dung chi sua nhung cau sai.
   anatomyQuizRepo.ensureAutoQuestionsForPage(attachmentId, attachment.lessonId, pageNumber)
+  anatomyQuizRepo.refreshPageQuestionGeometry(attachmentId, pageNumber)
 }

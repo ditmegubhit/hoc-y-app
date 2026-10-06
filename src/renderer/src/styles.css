@@ -3286,3 +3286,703 @@ input[type='number']:focus {
   width: 100%;
   max-width: 900px;
 }
+
+/* ===== practice (shell) ===== */
+/* Khu "Thuc hanh GP": tab sidebar, cay, trang file, trinh xem trang PDF.
+   Chi dung bien mau co san nen sang/toi deu dung. */
+
+/* ----- Sidebar: an han / mo lai ----- */
+.app-sidebar-inner {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-sidebar.is-collapsed {
+  border-right: none;
+  z-index: 5;
+}
+
+.app-sidebar.is-collapsed .app-sidebar-inner {
+  visibility: hidden;
+}
+
+/* Khi an: tay keo nam hoan toan trong vung nhin thay (mep trai man hinh). */
+.app-sidebar.is-collapsed .app-sidebar-resize-handle {
+  right: -10px;
+  width: 10px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--accent) 55%, transparent) 0 3px,
+    transparent 3px
+  );
+}
+
+.app-sidebar.is-collapsed .app-sidebar-resize-handle:hover,
+.app-sidebar.is-collapsed .app-sidebar-resize-handle.is-dragging {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.app-sidebar-reveal {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 16px;
+  height: 64px;
+  padding: 0;
+  justify-content: center;
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--card-bg);
+  color: var(--text-faint);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-sidebar-reveal:focus-visible,
+.sidebar-tab:focus-visible,
+.practice-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* ----- Tab sidebar ----- */
+.sidebar-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0.35rem 0.9rem 0.5rem;
+}
+
+.sidebar-tab {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.4rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sidebar-tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-tab svg {
+  flex-shrink: 0;
+}
+
+.sidebar-tab.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Hai cay cung mount, cay khong dung bi an bang visibility (giu trang thai). */
+.app-sidebar-tree-slot {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-sidebar-pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.app-sidebar-pane.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.app-sidebar-pane > .topic-tree {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+/* ----- Cay Thuc hanh ----- */
+.practice-tree-toolbar {
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.practice-tree-toolbar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.practice-tree-target {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.3rem 0.9rem;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 0.76rem;
+  color: var(--text-faint);
+}
+
+.practice-tree-target strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.practice-tree-target-reset {
+  border: none;
+  background: transparent;
+  padding: 2px;
+  color: var(--text-faint);
+}
+
+.practice-tree-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.4rem 0.6rem 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  max-height: 9rem;
+  overflow-y: auto;
+}
+
+.practice-tree-notice.is-error {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning-text);
+}
+
+.practice-tree-notice.is-info {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.practice-tree-notice-lines {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.practice-tree-notice button {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 2px;
+  color: inherit;
+}
+
+.practice-tree-body {
+  position: relative;
+  margin-top: 0.3rem;
+  border-radius: var(--radius-sm);
+}
+
+.practice-tree-body.is-drop-root {
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.practice-tree-row.is-drop-target {
+  background: var(--accent-soft-hover);
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.practice-tree-empty {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 1.2rem 0.9rem;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+.practice-tree-empty p {
+  margin: 0 0 0.4rem;
+}
+
+.practice-tree-rename {
+  min-width: 0;
+}
+
+/* ----- Huy hieu trang thai ----- */
+.practice-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-faint) 15%, transparent);
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.practice-badge.is-ok {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.practice-badge.is-warn {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.practice-badge.is-error {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+
+.practice-badge.is-busy {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.practice-badge.is-large {
+  height: 22px;
+  padding: 0 9px;
+  font-size: 0.76rem;
+}
+
+.practice-spin {
+  animation: practice-spin 0.9s linear infinite;
+}
+
+@keyframes practice-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-spin {
+    animation-duration: 3s;
+  }
+}
+
+/* ----- Hop thoai khu Thuc hanh ----- */
+.practice-dialog {
+  width: 420px;
+}
+
+.practice-dialog.is-wide {
+  width: 500px;
+}
+
+.practice-dialog-body p {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.practice-dialog .confirm-actions {
+  flex-wrap: wrap;
+}
+
+.practice-progress-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.practice-progress-bar {
+  height: 8px;
+  margin: 0.55rem 0;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.practice-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+.practice-progress-warn {
+  margin-bottom: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: 0.8rem;
+}
+
+.practice-progress-hint {
+  margin: 0.4rem 0 0.9rem;
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+/* ----- Trang file thuc hanh ----- */
+.app-main-content.is-practice {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.4rem 1rem 0.8rem;
+}
+
+.practice-file-page {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.practice-file-state {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.practice-file-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.8rem;
+  min-width: 0;
+}
+
+.practice-file-title {
+  margin: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+}
+
+.practice-file-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.practice-file-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.practice-file-sync-message {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.practice-link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 0.78rem;
+  text-decoration: underline;
+}
+
+.practice-link-button:hover:not(:disabled) {
+  background: none;
+  color: var(--accent-hover);
+}
+
+.practice-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.practice-action-wrap {
+  display: inline-flex;
+}
+
+.practice-action {
+  padding: 0.45rem 0.8rem;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.practice-action.is-highlight {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.practice-resume-hint {
+  margin-left: auto;
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-weight: 600;
+}
+
+.practice-file-viewer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* ----- Trinh xem 1 trang PDF vua khit ----- */
+.practice-viewer {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.practice-viewer-nav {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.practice-viewer-nav button {
+  padding: 0.25rem 0.4rem;
+}
+
+.practice-viewer-pageinput {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.practice-viewer-pageinput input {
+  width: 3.4rem;
+  padding: 0.2rem 0.3rem;
+  text-align: center;
+}
+
+.practice-viewer-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  background: color-mix(in srgb, var(--text) 9%, var(--bg-main));
+}
+
+.practice-viewer-stage.is-pannable {
+  cursor: grab;
+}
+
+.practice-viewer-stage.is-pannable.is-dragging {
+  cursor: grabbing;
+}
+
+.practice-viewer-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+  will-change: transform;
+}
+
+.practice-viewer-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.practice-viewer-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.practice-viewer-probe {
+  position: absolute;
+  max-width: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.practice-viewer-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.practice-viewer-controls {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--card-bg) 94%, transparent);
+  box-shadow: var(--shadow-md);
+}
+
+.practice-viewer-controls button {
+  padding: 0.25rem 0.45rem;
+  font-size: 0.78rem;
+}
+
+.practice-viewer-zoomvalue {
+  min-width: 3rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* ----- Man hinh trong ----- */
+.practice-empty {
+  max-width: 580px;
+  margin: 6vh auto 0;
+  padding: 0 0.5rem;
+}
+
+.practice-empty h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.4rem;
+}
+
+.practice-empty-lead {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.practice-empty-steps {
+  list-style: none;
+  margin: 1.1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.practice-empty-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.practice-empty-steps svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+/* ----- Ket qua tim theo ten ----- */
+.practice-search-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.practice-search-results ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.practice-search-item {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+}
+
+.practice-search-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+.practice-search-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.practice-search-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+}
+
+.practice-search-item:disabled {
+  opacity: 0.75;
+  cursor: default;
+}

@@ -37,6 +37,7 @@ import type {
   AnatomyStationSet,
   AnatomyEligibility,
   AnatomyLabelCandidate,
+  AnatomyTextReading,
   ConfirmAnatomyCandidateInput,
   CreateAnatomyStationSetInput,
   CreateManualCandidateInput,
@@ -47,6 +48,39 @@ import type {
   UpdateAnatomyCandidateInput,
   UpdateQuestionAnswerInput
 } from './anatomyQuiz'
+import type {
+  CheckPracticeAnswerInput,
+  CreatePracticeFolderInput,
+  CreatePracticeRegionInput,
+  CreatePracticeStationSetInput,
+  MovePracticeNodeInput,
+  PickRandomPracticeQuestionsInput,
+  PracticeAddFilesResult,
+  PracticeAiPageReading,
+  PracticeAttemptReview,
+  PracticeAttemptSummary,
+  PracticeFile,
+  PracticePageState,
+  PracticeQuestionSummary,
+  PracticeRegion,
+  PracticeScanProgress,
+  PracticeScanResult,
+  PracticeScanState,
+  PracticeSearchResult,
+  PracticeSourceStatus,
+  PracticeStationSet,
+  PracticeTextReading,
+  PracticeTreeNode,
+  RenamePracticeNodeInput,
+  ResetPracticeRegionColorsInput,
+  SavePracticeAttemptProgressInput,
+  SetPracticePageReviewInput,
+  StartedPracticeAttempt,
+  StartPracticeAttemptInput,
+  SubmitPracticeAttemptInput,
+  UpdatePracticeFileSettingsInput,
+  UpdatePracticeRegionInput
+} from './practice'
 
 export interface AppApi {
   appVersion: string
@@ -158,6 +192,7 @@ export interface AppApi {
     pickImage: () => Promise<{ mimeType: string; base64: string } | null>
   }
   anatomy: {
+    readCandidateText: (candidateId: string) => Promise<AnatomyTextReading>
     detectPage: (input: { attachmentId: string; pageNumber: number }) => Promise<AnatomyLabelCandidate[]>
     detectAllPages: (input: { attachmentId: string; force?: boolean }) => Promise<{ totalPages: number; cancelled?: boolean; alreadyComplete?: boolean }>
     cancelDetectAllPages: (attachmentId: string) => Promise<void>
@@ -194,5 +229,54 @@ export interface AppApi {
     getAttemptReview: (attemptId: string) => Promise<AnatomyAttemptReview | null>
     listAttemptHistory: (attachmentId: string) => Promise<AnatomyAttemptSummary[]>
     deleteAttemptHistory: (attemptId: string) => Promise<void>
+  }
+  // Khu "Thuc hanh Giai phau" - mo ta chi tiet o dau shared/types/practice.ts
+  practice: {
+    /** Duong dan that cua File keo-tha tu Explorer (Electron khong con File.path). */
+    getPathForFile: (file: File) => string
+    listNodes: () => Promise<PracticeTreeNode[]>
+    createFolder: (input: CreatePracticeFolderInput) => Promise<PracticeTreeNode>
+    renameNode: (input: RenamePracticeNodeInput) => Promise<PracticeTreeNode>
+    moveNode: (input: MovePracticeNodeInput) => Promise<PracticeTreeNode>
+    deleteNode: (id: string) => Promise<void>
+    search: (keyword: string) => Promise<PracticeSearchResult[]>
+    pickAndAddFiles: (parentId: string | null) => Promise<PracticeAddFilesResult>
+    addFilesFromPaths: (parentId: string | null, paths: string[]) => Promise<PracticeAddFilesResult>
+    getFile: (fileId: string) => Promise<PracticeFile | null>
+    updateFileSettings: (input: UpdatePracticeFileSettingsInput) => Promise<PracticeFile>
+    resetRegionColors: (input: ResetPracticeRegionColorsInput) => Promise<number>
+    getSourceStatus: (fileId: string) => Promise<PracticeSourceStatus>
+    syncSource: (fileId: string) => Promise<boolean>
+    resolveSourceChange: (input: { fileId: string; isSimilar: boolean }) => Promise<void>
+    onFilesUpdated: (callback: (fileId: string) => void) => () => void
+    scanFile: (input: { fileId: string; force?: boolean }) => Promise<PracticeScanResult>
+    cancelScan: (fileId: string) => Promise<void>
+    getScanState: (fileId: string) => Promise<PracticeScanState | null>
+    onScanProgress: (callback: (progress: PracticeScanProgress) => void) => () => void
+    listRegionsForPage: (input: { fileId: string; pageNumber: number }) => Promise<PracticeRegion[]>
+    listRegionsForFile: (fileId: string) => Promise<PracticeRegion[]>
+    createRegion: (input: CreatePracticeRegionInput) => Promise<PracticeRegion>
+    updateRegion: (input: UpdatePracticeRegionInput) => Promise<PracticeRegion>
+    deleteRegion: (id: string) => Promise<void>
+    restoreRegion: (region: PracticeRegion) => Promise<PracticeRegion>
+    readRegionWithAi: (regionId: string) => Promise<PracticeTextReading>
+    readPageWithAi: (input: { fileId: string; pageNumber: number }) => Promise<PracticeAiPageReading[]>
+    listPageStates: (fileId: string) => Promise<PracticePageState[]>
+    setPageReview: (input: SetPracticePageReviewInput) => Promise<void>
+    listQuestionSummaries: (fileId: string) => Promise<PracticeQuestionSummary[]>
+    pickRandomQuestions: (input: PickRandomPracticeQuestionsInput) => Promise<string[]>
+    listStationSets: (fileId: string) => Promise<PracticeStationSet[]>
+    createStationSet: (input: CreatePracticeStationSetInput) => Promise<PracticeStationSet>
+    deleteStationSet: (stationSetId: string) => Promise<void>
+    startAttempt: (input: StartPracticeAttemptInput) => Promise<StartedPracticeAttempt>
+    saveAttemptProgress: (input: SavePracticeAttemptProgressInput) => Promise<void>
+    resumeAttempt: (attemptId: string) => Promise<StartedPracticeAttempt | null>
+    findActiveAttempt: (fileId: string) => Promise<string | null>
+    checkAnswer: (input: CheckPracticeAnswerInput) => Promise<{ isCorrect: boolean; correctAnswerText: string }>
+    submitAttempt: (input: SubmitPracticeAttemptInput) => Promise<PracticeAttemptReview>
+    getAttemptReview: (attemptId: string) => Promise<PracticeAttemptReview | null>
+    listAttemptHistory: (fileId: string) => Promise<PracticeAttemptSummary[]>
+    deleteAttemptHistory: (attemptId: string) => Promise<void>
+    createReviewSet: (attemptId: string) => Promise<PracticeStationSet>
   }
 }

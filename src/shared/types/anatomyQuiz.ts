@@ -63,6 +63,11 @@ export interface UpdateAnatomyCandidateInput {
   cropBox?: Rect | null
 }
 
+export interface AnatomyTextReading {
+  text: string
+  certainty: 'clear' | 'uncertain' | 'unreadable'
+}
+
 export interface AnatomyPageState {
   pageNumber: number
   reviewed: boolean

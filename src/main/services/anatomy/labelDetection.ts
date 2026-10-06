@@ -60,30 +60,75 @@ export interface LabelCluster {
   confidence?: number | null
 }
 
-interface PixelWord {
-  box: Rect
-  text: string
-  coordSpace: 'pdf_point' | 'image_pixel'
-}
-
-// Dung cho buoc 1 (gom tu THANH 1 DONG): 2 tu duoc coi la cung dong neu gan
-// truc y VA khong qua xa theo truc x (khoang cach 2 tu lien tiep tren cung 1
-// nhan thuong nho hon nhieu lan chieu cao chu; 2 nhan KHAC NHAU dat canh nhau
-// ngang hang trong 1 anh giai phau thi thuong cach xa hon rat nhieu).
-function isSameLine(a: Rect, b: Rect, xGap: number, yThreshold: number): boolean {
-  const xClose = a.x0 - xGap <= b.x1 && b.x0 - xGap <= a.x1
-  const yClose = Math.abs(a.y0 - b.y0) <= yThreshold
-  return xClose && yClose
-}
-
-// Dung cho buoc 2 (gop 2 DONG da gom o buoc 1 lai voi nhau, vd chu thich viet
-// tay 2 dong): doi hoi CHONG LAN THAT SU theo truc x (khong chi "gan"), cong
-// khoang cach doc rat nho - tranh gop nham 2 nhan khac nhau chi tinh co cung
-// gan mep tren duoi nhau.
-function isVerticalContinuation(a: Rect, b: Rect, yGap: number): boolean {
-  const xOverlap = a.x0 <= b.x1 && b.x0 <= a.x1
-  const yClose = Math.abs(a.y1 - b.y0) <= yGap || Math.abs(b.y1 - a.y0) <= yGap
-  return xOverlap && yClose
+/** Group detector fragments and PDF text items using local character size.
+ * Applying the same pass to OCR and PDF labels also joins wrapped typed labels.
+ * Nearby labels remain separate when their gap/alignment is not a continuation. */
+export function clusterLabelFragments(fragments: LabelCluster[]): LabelCluster[] {
+  const height = (box: Rect): number => Math.max(1, box.y1 - box.y0)
+  const width = (box: Rect): number => Math.max(1, box.x1 - box.x0)
+  const hasSeveralWords = (text: string): boolean => text.trim().split(/\s+/u).length >= 2
+  const join = (a: LabelCluster, b: LabelCluster, vertical: boolean): LabelCluster => {
+    const [first, second] = vertical
+      ? (a.box.y0 <= b.box.y0 ? [a, b] : [b, a])
+      : (a.box.x0 <= b.box.x0 ? [a, b] : [b, a])
+    // PDF text layers may split one Vietnamese syllable into several items.
+    const adjacentGlyphs = !vertical && first.coordSpace === 'pdf_point' && second.coordSpace === 'pdf_point' &&
+      second.box.x0 - first.box.x1 < Math.min(height(first.box), height(second.box)) * 0.18 &&
+      !/\s$/.test(first.text) && !/^\s/.test(second.text)
+    const weights = [Math.max(1, a.text.trim().length), Math.max(1, b.text.trim().length)]
+    const confidence = a.confidence == null || b.confidence == null ? null :
+      (a.confidence * weights[0] + b.confidence * weights[1]) / (weights[0] + weights[1])
+    return { box: unionRect(a.box, b.box), text: `${first.text.trim()}${adjacentGlyphs ? '' : ' '}${second.text.trim()}`,
+      coordSpace: a.coordSpace, confidence }
+  }
+  let lines = fragments.filter((fragment) => fragment.box.x1 > fragment.box.x0 && fragment.box.y1 > fragment.box.y0)
+    .map((fragment) => ({ ...fragment }))
+    .sort((a, b) => a.box.x0 - b.box.x0)
+  // Restart after each merge so a bridging middle fragment connects both ends.
+  let changed = true
+  while (changed) {
+    changed = false
+    outer: for (let i = 0; i < lines.length; i++) {
+      for (let j = i + 1; j < lines.length; j++) {
+        const a = lines[i]; const b = lines[j]
+        if (a.coordSpace !== b.coordSpace) continue
+        const localHeight = Math.min(height(a.box), height(b.box))
+        if (Math.max(height(a.box), height(b.box)) > localHeight * 1.8) continue
+        const overlapY = Math.min(a.box.y1, b.box.y1) - Math.max(a.box.y0, b.box.y0)
+        const gapX = Math.max(a.box.x0, b.box.x0) - Math.min(a.box.x1, b.box.x1)
+        // Detector lines containing several words are often complete nearby
+        // annotations. Join them only when almost touching, not across a gutter.
+        if (hasSeveralWords(a.text) && hasSeveralWords(b.text) && gapX > localHeight * 0.25) continue
+        if (overlapY < localHeight * 0.5 || gapX > localHeight * 1.15 || gapX < -Math.min(width(a.box), width(b.box)) * 0.5) continue
+        lines[i] = join(a, b, false); lines.splice(j, 1); changed = true; break outer
+      }
+    }
+  }
+  // Keep individual line heights when joining wrapped labels: a tall merged box
+  // must not increase the gap allowed to the next independent annotation.
+  let blocks = lines.sort((a, b) => a.box.y0 - b.box.y0 || a.box.x0 - b.box.x0)
+    .map((line) => ({ line, lineHeight: height(line.box), count: 1 }))
+  changed = true
+  while (changed) {
+    changed = false
+    outer: for (let i = 0; i < blocks.length; i++) {
+      for (let j = i + 1; j < blocks.length; j++) {
+        const a = blocks[i]; const b = blocks[j]
+        if (a.line.coordSpace !== b.line.coordSpace || a.count + b.count > 4) continue
+        const h = Math.min(a.lineHeight, b.lineHeight)
+        if (Math.max(a.lineHeight, b.lineHeight) > h * 1.8) continue
+        const xOverlap = Math.min(a.line.box.x1, b.line.box.x1) - Math.max(a.line.box.x0, b.line.box.x0)
+        const gapY = Math.max(a.line.box.y0, b.line.box.y0) - Math.min(a.line.box.y1, b.line.box.y1)
+        if (hasSeveralWords(a.line.text) && hasSeveralWords(b.line.text) && gapY > h * 0.25) continue
+        const aligned = Math.abs(a.line.box.x0 - b.line.box.x0) <= h * 0.5 ||
+          xOverlap >= Math.min(width(a.line.box), width(b.line.box)) * 0.7
+        if (!aligned || xOverlap <= 0 || gapY < -h * 0.3 || gapY > h * 0.7) continue
+        blocks[i] = { line: join(a.line, b.line, true), lineHeight: h, count: a.count + b.count }
+        blocks.splice(j, 1); changed = true; break outer
+      }
+    }
+  }
+  return blocks.map((block) => block.line).sort((a, b) => a.box.y0 - b.box.y0 || a.box.x0 - b.box.x0)
 }
 
 function unionRect(a: Rect, b: Rect): Rect {
@@ -106,74 +151,8 @@ export function clusterWordsIntoLabelBoxes(
   words: WordPositionRow[],
   target: RenderTarget
 ): LabelCluster[] {
-  if (words.length === 0) return []
-
-  const pixelWords: PixelWord[] = words.map((w) => ({
-    box: toRenderPixelRect(w, target),
-    text: w.text,
-    coordSpace: w.coordSpace
-  }))
-
-  const heights = pixelWords.map((w) => Math.abs(w.box.y1 - w.box.y0))
-  const avgHeight = heights.reduce((a, b) => a + b, 0) / heights.length || 12
-  const yThreshold = avgHeight * 0.6 || 5
-  // Khoang cach ngang toi da giua 2 tu de con coi la CUNG 1 NHAN/dong - vai
-  // lan chieu cao chu la du cho khoang trang/kerning trong 1 cum tu, nhung
-  // KHONG du de 2 nhan khac nhau (thuong cach nhau hang tram px) bi gop nham.
-  const sameLineXGap = avgHeight * 3
-
-  // Gom tu thanh dong: 1 tu duoc gan vao dong da co NEU gan truc y VA gan
-  // truc x VOI IT NHAT 1 tu da co trong dong do (khong chi tu dau tien) - de
-  // 1 dong nhieu tu van noi duoc voi nhau ngay ca khi tu dau/cuoi dong cach xa
-  // tu o giua.
-  const sorted = [...pixelWords].sort((a, b) => a.box.x0 - b.box.x0)
-  const lines: PixelWord[][] = []
-  for (const w of sorted) {
-    const joinLine = lines.find((line) => line.some((existing) => isSameLine(existing.box, w.box, sameLineXGap, yThreshold)))
-    if (joinLine) joinLine.push(w)
-    else lines.push([w])
-  }
-
-  const clusters: LabelCluster[] = lines.map((line) => ({
-    box: line.reduce((r, w) => unionRect(r, w.box), line[0].box),
-    text: line
-      .sort((a, b) => a.box.x0 - b.box.x0)
-      .map((w) => w.text)
-      .join(' '),
-    // Neu 1 dong lan ca 2 nguon (hiem), uu tien pdf_point (typed) vi thuong la
-    // nhan chinh; con lai la phu chua.
-    coordSpace: line.some((w) => w.coordSpace === 'pdf_point') ? 'pdf_point' : 'image_pixel'
-  }))
-
-  // Gop 2 DONG da gom o tren neu chung thuc su la 1 chu thich viet lam 2 dong
-  // (vd "Niệu quản" / "đoạn bụng" ngay duoi nhau) - doi hoi CHONG LAN THAT SU
-  // theo truc x (khong chi gan), khoang cach doc rat nho. Chi ap dung cho
-  // nhan 'image_pixel' (viet tay/OCR) - nhan 'pdf_point' (chu go) hau het da
-  // la 1 cum hoan chinh tu 1 item pdf.js, gop them de gay nham nhieu hon loi.
-  const yGap = avgHeight * 0.4 || 4
-  let merged: LabelCluster[] = [...clusters]
-  let mergedAny = true
-  while (mergedAny) {
-    mergedAny = false
-    outer: for (let i = 0; i < merged.length; i++) {
-      if (merged[i].coordSpace !== 'image_pixel') continue
-      for (let j = 0; j < merged.length; j++) {
-        if (i === j || merged[j].coordSpace !== 'image_pixel') continue
-        if (isVerticalContinuation(merged[i].box, merged[j].box, yGap)) {
-          const [a, b] = merged[i].box.y0 <= merged[j].box.y0 ? [merged[i], merged[j]] : [merged[j], merged[i]]
-          const combined: LabelCluster = {
-            box: unionRect(a.box, b.box),
-            text: `${a.text} ${b.text}`.trim(),
-            coordSpace: 'image_pixel'
-          }
-          merged = merged.filter((_, idx) => idx !== i && idx !== j)
-          merged.push(combined)
-          mergedAny = true
-          break outer
-        }
-      }
-    }
-  }
-
-  return merged
+  return clusterLabelFragments(words.map((word) => ({
+    box: toRenderPixelRect(word, target), text: word.text, coordSpace: word.coordSpace,
+    confidence: word.coordSpace === 'pdf_point' ? 1 : null
+  })))
 }

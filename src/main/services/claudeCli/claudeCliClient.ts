@@ -40,6 +40,7 @@ export function runClaudeHeadless(params: {
   prompt: string
   jsonSchema?: Record<string, unknown>
   timeoutMs?: number
+  images?: Array<{ mediaType: 'image/png' | 'image/jpeg'; base64: string }>
 }): Promise<ClaudeCliResult> {
   return new Promise((resolve) => {
     const args = [
@@ -56,6 +57,10 @@ export function runClaudeHeadless(params: {
     ]
     if (params.jsonSchema) {
       args.push('--json-schema', JSON.stringify(params.jsonSchema))
+    }
+    if (params.images?.length) {
+      args[args.indexOf('--output-format') + 1] = 'stream-json'
+      args.push('--input-format', 'stream-json', '--verbose')
     }
 
     // shell:false + truyen prompt qua stdin (khong qua argv) de tranh gioi han
@@ -87,8 +92,11 @@ export function runClaudeHeadless(params: {
       finish({ ok: false, errorMessage: 'Hết thời gian chờ phản hồi từ Claude CLI.' })
     }, params.timeoutMs ?? DEFAULT_TIMEOUT_MS)
 
-    child.stdout.on('data', (d: Buffer) => (stdout += d.toString('utf8')))
-    child.stderr.on('data', (d: Buffer) => (stderr += d.toString('utf8')))
+    child.stdout.setEncoding('utf8')
+    child.stderr.setEncoding('utf8')
+    child.stdout.on('data', (d: string) => (stdout += d))
+    child.stderr.on('data', (d: string) => (stderr += d))
+    child.stdin.on('error', (error) => { stderr += `\n${error.message}` })
 
     child.on('error', (err) => {
       finish({ ok: false, errorMessage: `Không tìm thấy Claude Code CLI: ${err.message}` })
@@ -97,14 +105,17 @@ export function runClaudeHeadless(params: {
     child.on('close', (code) => {
       if (timedOut) return
       try {
-        const envelope = JSON.parse(stdout) as {
+        const parsed = params.images?.length
+          ? stdout.trim().split('\n').map((line) => JSON.parse(line)).reverse().find((event: { type?: string }) => event.type === 'result')
+          : JSON.parse(stdout)
+        const envelope = parsed as {
           is_error?: boolean
           result?: string
           structured_output?: unknown
           total_cost_usd?: number
         }
-        if (envelope.is_error) {
-          finish({ ok: false, errorMessage: envelope.result ?? stderr })
+        if (!envelope || envelope.is_error || code !== 0) {
+          finish({ ok: false, errorMessage: envelope?.result ?? (stderr || `Claude thoát mã ${code}`) })
           return
         }
         finish({
@@ -121,7 +132,14 @@ export function runClaudeHeadless(params: {
       }
     })
 
-    child.stdin?.write(params.prompt, 'utf8')
+    const input = params.images?.length ? JSON.stringify({ type: 'user', parent_tool_use_id: null,
+      message: { role: 'user', content: [
+        { type: 'text', text: params.prompt },
+        ...params.images.map((image) => ({ type: 'image', source: {
+          type: 'base64', media_type: image.mediaType, data: image.base64
+        } }))
+      ] } }) + '\n' : params.prompt
+    child.stdin?.write(input, 'utf8')
     child.stdin?.end()
   })
 }

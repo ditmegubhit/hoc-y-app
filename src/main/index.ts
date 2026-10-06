@@ -8,7 +8,12 @@ import {
   maybeSyncAllAttachments
 } from './services/attachments.service'
 import { terminateOcrWorker } from './services/ocr/ocrEngine'
+import { terminateVietnameseOcr } from './services/anatomy/vietnameseOcr'
+import { terminatePaddleOcr } from './services/anatomy/paddleOcrClient'
 import { cleanupHighlightTempDir } from './services/fileStorage.service'
+import { handleProcessStdioErrors } from './services/runtime/stdioErrors'
+
+handleProcessStdioErrors()
 
 app.whenReady().then(() => {
   getDb()
@@ -35,4 +40,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   void terminateOcrWorker()
+  void terminateVietnameseOcr()
+  terminatePaddleOcr()
 })

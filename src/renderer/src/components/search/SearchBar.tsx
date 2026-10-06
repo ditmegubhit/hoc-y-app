@@ -6,15 +6,16 @@ interface SearchBarProps {
   // Thu gon chieu cao (dung khi dang xem 1 bai hoc, de nhuong khong gian
   // doc cho cua so file dinh kem o ben duoi) - xem App.tsx.
   compact?: boolean
+  placeholder?: string
 }
 
-function SearchBar({ value, onChange, compact }: SearchBarProps): React.JSX.Element {
+function SearchBar({ value, onChange, compact, placeholder }: SearchBarProps): React.JSX.Element {
   return (
     <div className={`search-bar${compact ? ' is-compact' : ''}`}>
       <Search size={16} className="search-bar-icon" />
       <input
         type="text"
-        placeholder="Tìm kiếm trong tất cả bài học (vd: Myoglobin)..."
+        placeholder={placeholder ?? 'Tìm kiếm trong tất cả bài học (vd: Myoglobin)...'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />

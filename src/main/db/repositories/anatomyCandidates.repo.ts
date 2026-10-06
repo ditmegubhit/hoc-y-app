@@ -64,7 +64,7 @@ export function replaceDetectedCandidates(
   const db = getDb()
   const del = db.prepare(
     `DELETE FROM anatomy_label_candidates
-     WHERE attachment_id = ? AND page_number = ? AND status = 'pending'`
+     WHERE attachment_id = ? AND page_number = ? AND status = 'pending' AND confidence IS NOT NULL`
   )
   const ins = db.prepare(
     `INSERT INTO anatomy_label_candidates
@@ -74,8 +74,24 @@ export function replaceDetectedCandidates(
 
   const ids: string[] = []
   const tx = db.transaction(() => {
+    // Manual regions have no OCR confidence; preserve them while the author edits.
+    const retained = listCandidatesForPage(attachmentId, pageNumber).filter((candidate) =>
+      candidate.status !== 'pending' || candidate.confidence === null)
     del.run(attachmentId, pageNumber)
     for (const c of detected) {
+      // A repeated scan must not duplicate confirmed/rejected regions. Compare
+      // in normalized page coordinates in case rendering resolution changed.
+      const overlapsRetained = retained.some((old) => {
+        const a = { x0: old.labelBox.x0 / old.refWidth, x1: old.labelBox.x1 / old.refWidth,
+          y0: old.labelBox.y0 / old.refHeight, y1: old.labelBox.y1 / old.refHeight }
+        const b = { x0: c.labelBox.x0 / c.refWidth, x1: c.labelBox.x1 / c.refWidth,
+          y0: c.labelBox.y0 / c.refHeight, y1: c.labelBox.y1 / c.refHeight }
+        const area = Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) *
+          Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0))
+        const smaller = Math.min((a.x1 - a.x0) * (a.y1 - a.y0), (b.x1 - b.x0) * (b.y1 - b.y0))
+        return smaller > 0 && area / smaller >= 0.7
+      })
+      if (overlapsRetained) continue
       const id = randomUUID()
       ids.push(id)
       ins.run(id, c.attachmentId, c.pageNumber, c.rawText, JSON.stringify(c.labelBox), c.refWidth, c.refHeight, c.confidence ?? null)

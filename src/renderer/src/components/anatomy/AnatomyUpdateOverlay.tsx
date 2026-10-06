@@ -13,7 +13,8 @@ import {
   useUpdateCandidate,
   useUpdateQuestionAnswer
 } from '@renderer/queries/anatomyQuiz'
-import type { AnatomyLabelCandidate, Rect } from '@shared/types/anatomyQuiz'
+import type { AnatomyLabelCandidate, AnatomyTextReading, Rect } from '@shared/types/anatomyQuiz'
+import { useMutation } from '@tanstack/react-query'
 import ConfirmDialog from '@renderer/components/common/ConfirmDialog'
 import AnatomyPageReviewCanvas from './AnatomyPageReviewCanvas'
 
@@ -61,6 +62,9 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
   const [mergeTargetId, setMergeTargetId] = useState('')
   const [regionFilter, setRegionFilter] = useState<'all' | AnatomyLabelCandidate['status'] | 'low'>('all')
   const [previewRegion, setPreviewRegion] = useState(false)
+  const [readingSuggestion, setReadingSuggestion] = useState<AnatomyTextReading | null>(null)
+  const [readingError, setReadingError] = useState<string | null>(null)
+  const readCandidateText = useMutation({ mutationFn: (candidateId: string) => window.api.anatomy.readCandidateText(candidateId) })
 
   useEffect(() => {
     return window.api.anatomy.onDetectAllPagesProgress((p) => setBulkDetectProgress(p))
@@ -110,6 +114,9 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
   const rejectedCount = sortedList.filter((c) => c.status === 'rejected').length
 
   useEffect(() => {
+    setReadingSuggestion(null)
+    setReadingError(null)
+    readCandidateText.reset()
     setAnswerText(current?.status === 'confirmed' ? current.answerText ?? '' : current?.rawText.trim() ?? '')
     setAlternatesText(
       current?.status === 'confirmed' && current.acceptedAlternates
@@ -117,6 +124,24 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
         : ''
     )
   }, [current?.id])
+
+  const handleReadWithAi = (): void => {
+    if (!current) return
+    const candidateId = current.id
+    setReadingSuggestion(null)
+    setReadingError(null)
+    readCandidateText.mutate(candidateId, {
+      onSuccess: (result) => {
+        // Keep late results from replacing edits or appearing on another label.
+        if (currentCandidateRef.current === candidateId) setReadingSuggestion(result)
+      },
+      onError: (error) => {
+        if (currentCandidateRef.current === candidateId) setReadingError(error.message)
+      }
+    })
+  }
+  const currentCandidateRef = useRef<string | null>(null)
+  currentCandidateRef.current = current?.id ?? null
 
   const goToPage = (pageNumber: number, style: EntryStyle): void => {
     pendingEntryStyleRef.current = style
@@ -568,6 +593,24 @@ function AnatomyUpdateOverlay({ attachmentId, lessonId, onExit }: AnatomyUpdateO
                   currentCandidateId={current.id}
                 />
                 <div className="anatomy-candidate-form">
+                  <p className="quiz-generate-hint">
+                    {current.confidence !== null && current.confidence < 0.8 ? 'OCR chưa chắc chắn: kiểm tra nhãn và đáp án trước khi lưu.' : 'Có thể sửa đáp án OCR trước khi lưu.'}
+                  </p>
+                  <button type="button" className="btn-secondary" disabled={readCandidateText.isPending || saving} onClick={handleReadWithAi}>
+                    {readCandidateText.isPending ? 'Đang đọc chữ…' : 'Đọc lại tiếng Việt / chữ viết tay bằng Claude'}
+                  </button>
+                  <small>Gửi riêng ảnh vùng chữ này tới Claude. Bạn chọn dùng kết quả rồi lưu đáp án.</small>
+                  {readingSuggestion && <div role="status">
+                    <p>{readingSuggestion.certainty === 'unreadable' ? 'Không đọc rõ chữ trong vùng này.' :
+                      readingSuggestion.certainty === 'uncertain' ? 'Chữ chưa rõ, cần kiểm tra đề xuất:' : 'Đáp án đề xuất:'}
+                      {' '}{readingSuggestion.text}</p>
+                    {readingSuggestion.text && readingSuggestion.certainty !== 'unreadable' &&
+                      <button type="button" className="btn-secondary" disabled={saving} onClick={() => {
+                        setAnswerText(readingSuggestion.text)
+                        setReadingSuggestion(null)
+                      }}>Dùng đáp án đề xuất</button>}
+                  </div>}
+                  {readingError && <p role="alert">{readingError}</p>}
                   <label>
                     Đáp án đúng
                     <input type="text" value={answerText} onChange={(e) => setAnswerText(e.target.value)} />

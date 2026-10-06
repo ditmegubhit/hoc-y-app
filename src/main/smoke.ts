@@ -12,6 +12,9 @@
 import { app } from 'electron'
 import { join } from 'node:path'
 import { getDb } from './db'
+import { handleProcessStdioErrors } from './services/runtime/stdioErrors'
+
+handleProcessStdioErrors(() => app.exit(1))
 
 // Chay `electron out/main/smoke.js` truc tiep -> app.name = "hoc-y-app" -> userData
 // tro sang thu muc RONG khac. Ep ve dung thu muc cua app that (theo productName).

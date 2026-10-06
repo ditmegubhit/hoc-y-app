@@ -8,6 +8,7 @@ import { registerQuestionBankHandlers } from './handlers/questionBank.handler'
 import { registerExamFilesHandlers } from './handlers/examFiles.handler'
 import { registerNotesHandlers } from './handlers/notes.handler'
 import { registerAnatomyHandlers } from './handlers/anatomy.handler'
+import { registerPracticeHandlers } from './handlers/practice.handler'
 
 export function registerIpcHandlers(): void {
   registerTopicsHandlers()
@@ -20,4 +21,5 @@ export function registerIpcHandlers(): void {
   registerExamFilesHandlers()
   registerNotesHandlers()
   registerAnatomyHandlers()
+  registerPracticeHandlers()
 }

@@ -2,6 +2,8 @@ node_modules/
 out/
 dist/
 dist2/
+dist-ocr/
+dist-ocr-fixed/
 release/
 *.log
 *.tsbuildinfo
@@ -22,3 +24,11 @@ Thumbs.db
 # https://github.com/hiroi-sora/PaddleOCR-json/releases (v1.4.1, windows_x64)
 # giai nen vao dung duong dan nay neu can dung lai o may khac.
 resources/paddleocr/
+
+# Isolated test snapshots and visual evidence.
+tmp/
+
+# Model VietOCR ONNX (~77MB) - khong commit; tai lai tu huggingface dzngo/vietocr-models (xem resources/vietocr/NOTICE.txt).
+# Thieu model thi bo nhan dang tu roi ve Tesseract.
+resources/vietocr/*.onnx
+resources/vietocr/vocab.txt

@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { app } from 'electron'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 
 // PaddleOCR-json (https://github.com/hiroi-sora/PaddleOCR-json) - engine OCR
 // dua tren deep learning (khong phai Tesseract), dang THU NGHIEM rieng cho
@@ -18,7 +18,7 @@ import { join } from 'node:path'
 function paddleOcrDir(): string {
   return app.isPackaged
     ? join(process.resourcesPath, 'paddleocr')
-    : join(__dirname, '../../resources/paddleocr/PaddleOCR-json_v1.4.1')
+    : join(__dirname, basename(__dirname) === 'chunks' ? '../../../resources/paddleocr/PaddleOCR-json_v1.4.1' : '../../resources/paddleocr/PaddleOCR-json_v1.4.1')
 }
 
 export interface PaddleOcrLine {

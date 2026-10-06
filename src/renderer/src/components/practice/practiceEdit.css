@@ -1,0 +1,1039 @@
+/* Man "Sua dap an" khu Thuc hanh Giai phau. Chi dung bien mau cua app (--accent, --card-bg,
+   --border-soft...) nen tu theo sang/toi. Tien to lop: pe- */
+
+/* Khung chinh cua khu Thuc hanh lam moc dinh vi: man Sua dap an phu kin khung nay
+   (position:absolute; inset:0) - thanh ben trai va thanh tim kiem phia tren van thay duoc. */
+.app-main-content.is-practice {
+  position: relative;
+}
+
+.pe-root {
+  --pe-surface: color-mix(in srgb, var(--text) 4%, var(--card-bg));
+  --pe-surface-2: color-mix(in srgb, var(--text) 9%, var(--card-bg));
+  --pe-unreviewed: #f59e0b;
+  --pe-confirmed: #4ade80;
+  --pe-maskonly: #94a3b8;
+  --pe-active: #3b82f6;
+  --pe-crop: #06b6d4;
+  --pe-target: #ff2d55;
+  --pe-suspect: #a855f7;
+
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-app);
+  color: var(--text);
+  font-size: 0.85rem;
+  outline: none;
+}
+
+[data-theme='light'] .pe-root {
+  --pe-confirmed: #16a34a;
+  --pe-maskonly: #64748b;
+  --pe-unreviewed: #d97706;
+  --pe-suspect: #9333ea;
+}
+
+.pe-root h2,
+.pe-root h3,
+.pe-root p {
+  margin: 0;
+}
+
+.pe-root :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pe-loading {
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  color: var(--text-muted);
+}
+
+.pe-muted {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* ---------- Hop thoai (1/4 tren) ---------- */
+
+.pe-dialog {
+  flex: 0 0 25%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border);
+}
+
+.pe-dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.5rem 0.7rem 0.45rem;
+}
+
+.pe-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.pe-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--pe-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.pe-answer-card {
+  flex: 1.5 1 400px;
+}
+
+.pe-color-card {
+  flex: 1.2 1 330px;
+}
+
+.pe-region-card {
+  flex: 1 1 290px;
+}
+
+.pe-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ---------- Dau hop thoai ---------- */
+
+.pe-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  padding: 0.35rem 0.7rem;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-app);
+}
+
+.pe-head-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.pe-head-title h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pe-file-name {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.pe-head-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+}
+
+.pe-summary {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pe-help-btn {
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  justify-content: center;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.pe-help-pop {
+  position: fixed;
+  z-index: 70;
+  width: 330px;
+  max-width: calc(100vw - 16px);
+  padding: 0.55rem 0.75rem 0.65rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.pe-help-title {
+  margin-bottom: 0.3rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.pe-help-pop dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.7rem;
+  margin: 0;
+}
+
+.pe-help-pop dt {
+  justify-self: start;
+  padding: 0 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--pe-surface-2);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.pe-help-pop dd {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.pe-seg {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--card-bg);
+}
+
+.pe-seg-btn {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.pe-seg-btn + .pe-seg-btn {
+  border-left: 1px solid var(--border);
+}
+
+.pe-seg-btn.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.pe-seg-btn.is-active:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: #fff;
+}
+
+.pe-scope {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.pe-scope-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.pe-select {
+  font-family: inherit;
+  font-size: 0.82rem;
+  padding: 0.22rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+.pe-switch {
+  gap: 0.4rem;
+  padding: 0.2rem 0.55rem 0.2rem 0.3rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.pe-switch-knob {
+  position: relative;
+  width: 26px;
+  height: 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 25%, transparent);
+  transition: background-color 0.12s ease;
+}
+
+.pe-switch-knob::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.12s ease;
+}
+
+.pe-switch.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pe-switch.is-on .pe-switch-knob {
+  background: var(--accent);
+}
+
+.pe-switch.is-on .pe-switch-knob::after {
+  transform: translateX(12px);
+}
+
+/* ---------- Nut ---------- */
+
+.pe-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pe-btn.is-small {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.76rem;
+}
+
+.pe-btn.is-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.pe-btn.is-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+
+.pe-btn.is-danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+
+.pe-btn.is-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 14%, var(--card-bg));
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.pe-btn.is-on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pe-btn kbd {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.68rem;
+  padding: 0 0.28rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  opacity: 0.75;
+}
+
+.pe-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.pe-link:hover:not(:disabled) {
+  background: none;
+  color: var(--accent-hover);
+}
+
+/* ---------- Hop Dap an ---------- */
+
+.pe-answer-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+
+.pe-position {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pe-state {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--pe-surface-2);
+  color: var(--text-muted);
+}
+
+.pe-state.is-unreviewed {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning-text);
+}
+
+.pe-state.is-confirmed {
+  background: color-mix(in srgb, var(--success) 16%, var(--card-bg));
+  border-color: color-mix(in srgb, var(--success) 50%, var(--border));
+  color: var(--success);
+}
+
+.pe-state.is-suspect {
+  background: color-mix(in srgb, var(--pe-suspect) 18%, var(--card-bg));
+  border-color: color-mix(in srgb, var(--pe-suspect) 55%, var(--border));
+  color: var(--text);
+}
+
+.pe-state.is-manual {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pe-answer-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.pe-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.pe-field-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.pe-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.92rem;
+}
+
+.pe-input.is-empty {
+  border-color: var(--warning-border);
+}
+
+.pe-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.9rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.pe-hint q {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pe-hint.is-ai {
+  color: var(--accent);
+}
+
+.pe-warn {
+  font-size: 0.76rem;
+  color: var(--warning-text);
+}
+
+.pe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pe-actions-gap {
+  flex: 1 1 0;
+  min-width: 0.2rem;
+}
+
+.pe-empty-hint {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+/* ---------- Mau / do mo ---------- */
+
+.pe-picker {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.pe-picker-side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+}
+
+.pe-wheel {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.pe-wheel-canvas {
+  display: block;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px var(--border),
+    var(--shadow-sm);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.pe-wheel-marker {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.pe-inline-row {
+  display: grid;
+  grid-template-columns: minmax(2.9rem, auto) minmax(0, 1fr) 2.4rem;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pe-inline-row.is-color {
+  grid-template-columns: minmax(2.9rem, auto) minmax(0, 1fr) auto;
+}
+
+.pe-inline-value {
+  font-size: 0.74rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.pe-range {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+}
+
+.pe-range-opacity {
+  background: linear-gradient(to right, color-mix(in srgb, var(--text) 10%, transparent), var(--text));
+}
+
+.pe-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.pe-range:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pe-hex-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pe-hex-input {
+  width: 6.4rem;
+  padding: 0.22rem 0.4rem;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.pe-hex-input.is-invalid {
+  border-color: var(--danger);
+}
+
+.pe-swatch {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid color-mix(in srgb, var(--text) 40%, transparent);
+}
+
+.pe-swatch.is-static {
+  cursor: default;
+}
+
+.pe-swatch.is-current {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pe-recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.pe-color-btn {
+  min-width: 0;
+  padding: 0.18rem 0.45rem 0.18rem 0.28rem;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.pe-color-btn.is-open {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.pe-color-hex {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 0.76rem;
+}
+
+.pe-tag {
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--pe-surface-2);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.pe-tag.is-own {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.pe-popover {
+  position: fixed;
+  z-index: 60;
+  padding: 0.65rem 0.7rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.pe-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: auto;
+}
+
+/* ---------- Chu giai ---------- */
+
+.pe-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.95rem;
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.pe-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.pe-legend-note {
+  flex-basis: 100%;
+}
+
+.pe-key {
+  display: inline-block;
+  width: 16px;
+  height: 10px;
+  border: 2px solid var(--pe-unreviewed);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 30%, transparent);
+}
+
+.pe-key.is-unreviewed {
+  border-style: dashed;
+  border-color: var(--pe-unreviewed);
+}
+
+.pe-key.is-confirmed {
+  border-style: solid;
+  border-color: var(--pe-confirmed);
+}
+
+.pe-key.is-maskOnly {
+  border-style: dotted;
+  border-color: var(--pe-maskonly);
+}
+
+.pe-key.is-suspect {
+  border-color: transparent;
+  background: var(--pe-suspect);
+}
+
+.pe-key.is-active {
+  border-style: solid;
+  border-color: var(--pe-active);
+}
+
+/* ---------- Thanh keo chia ---------- */
+
+.pe-splitter {
+  flex: 0 0 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  background: var(--bg-app);
+  touch-action: none;
+}
+
+.pe-splitter-grip {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 28%, transparent);
+  transition: background-color 0.12s ease;
+}
+
+.pe-splitter:hover .pe-splitter-grip,
+.pe-splitter.is-dragging .pe-splitter-grip,
+.pe-splitter:focus-visible .pe-splitter-grip {
+  background: var(--accent);
+}
+
+/* ---------- Khung file (3/4 duoi) ---------- */
+
+.pe-viewer-pane {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  padding: 0 0.5rem 0.5rem;
+}
+
+/* ---------- Lop phu SVG tren trang ---------- */
+
+.pe-canvas {
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+
+.pe-canvas.is-tool-draw,
+.pe-canvas.is-tool-crop {
+  cursor: crosshair;
+}
+
+.pe-region {
+  stroke-width: 2px;
+  shape-rendering: crispEdges;
+}
+
+.pe-region.is-unreviewed {
+  stroke: var(--pe-unreviewed);
+  stroke-dasharray: 6 3;
+}
+
+.pe-region.is-confirmed {
+  stroke: var(--pe-confirmed);
+}
+
+.pe-region.is-maskOnly {
+  stroke: var(--pe-maskonly);
+  stroke-dasharray: 1.5 3.5;
+}
+
+.pe-canvas.is-select.is-tool-select .pe-region {
+  cursor: pointer;
+}
+
+.pe-canvas.is-select.is-tool-select .pe-region.is-active,
+.pe-canvas.is-sequence.is-tool-select .pe-region.is-active {
+  cursor: move;
+}
+
+.pe-canvas.is-sequence .pe-region:not(.is-active),
+.pe-canvas.is-tool-draw .pe-region,
+.pe-canvas.is-tool-crop .pe-region {
+  pointer-events: none;
+}
+
+.pe-active-halo {
+  fill: none;
+  stroke: var(--pe-active);
+  stroke-width: 7px;
+  stroke-opacity: 0.85;
+  pointer-events: none;
+}
+
+.pe-suspect-text,
+.pe-crop-text {
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-linejoin: round;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pe-suspect-text {
+  fill: #4c1d95;
+}
+
+.pe-crop-text {
+  fill: #0e7490;
+}
+
+.pe-crop {
+  fill: none;
+  stroke: var(--pe-crop);
+  stroke-width: 2.5px;
+  stroke-dasharray: 8 5;
+}
+
+.pe-draft {
+  fill: color-mix(in srgb, var(--pe-active) 22%, transparent);
+  stroke: var(--pe-active);
+  stroke-width: 2px;
+  stroke-dasharray: 5 3;
+}
+
+.pe-catch {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.pe-handle {
+  fill: #fff;
+  stroke: var(--pe-active);
+  stroke-width: 2px;
+}
+
+/* ---------- Xem thu cau hoi ---------- */
+
+.pe-preview {
+  position: absolute;
+  inset: 0 0.5rem 0.5rem;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--bg-app) 96%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.pe-preview-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.pe-preview-bar .pe-muted {
+  flex: 1;
+  min-width: 0;
+}
+
+.pe-preview-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: color-mix(in srgb, var(--text) 9%, var(--bg-main));
+}
+
+.pe-preview-svg {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.35);
+}
+
+.pe-target-box {
+  fill: none;
+  stroke: var(--pe-target);
+  stroke-width: 2.5px;
+  stroke-dasharray: 7 4;
+}
+
+/* ---------- Da duyet xong ---------- */
+
+.pe-done {
+  position: absolute;
+  inset: 0 0.5rem 0.5rem;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--bg-app) 82%, transparent);
+  border-radius: var(--radius);
+}
+
+.pe-done-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: min(380px, 100%);
+  padding: 1.1rem 1.4rem 1.2rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.pe-done-icon {
+  color: var(--success);
+}
+
+.pe-done-card h3 {
+  font-size: 1.1rem;
+}
+
+.pe-done-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 1.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+}
+
+.pe-done-stats strong {
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+.pe-done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+/* ---------- Thong bao ---------- */
+
+.pe-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 40;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  max-width: min(640px, 80%);
+  padding: 0.5rem 0.65rem 0.5rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-md);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.pe-toast.is-error {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 14%, var(--card-bg));
+}
+
+.pe-toast-close {
+  flex: 0 0 auto;
+  padding: 0.1rem;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pe-switch-knob,
+  .pe-switch-knob::after,
+  .pe-splitter-grip {
+    transition: none;
+  }
+}
