@@ -145,6 +145,7 @@ export const IpcChannels = {
     getAttemptReview: 'practice:getAttemptReview',
     listAttemptHistory: 'practice:listAttemptHistory',
     deleteAttemptHistory: 'practice:deleteAttemptHistory',
-    createReviewSet: 'practice:createReviewSet'
+    createReviewSet: 'practice:createReviewSet',
+    reportAnswerIssue: 'practice:reportAnswerIssue'
   }
 } as const

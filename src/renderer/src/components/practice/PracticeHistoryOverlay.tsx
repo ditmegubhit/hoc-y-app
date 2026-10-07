@@ -244,6 +244,7 @@ export default function PracticeHistoryOverlay({ fileId, onClose, onStartStation
                   key={review.attemptId}
                   fileId={fileId}
                   review={review}
+                  onReviewChange={setReview}
                   actions={
                     <>
                       {review.answers.some((a) => !a.isCorrect) && (

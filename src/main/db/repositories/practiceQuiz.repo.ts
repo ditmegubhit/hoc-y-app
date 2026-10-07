@@ -3,11 +3,14 @@ import { getDb } from '../index'
 import { computeAnatomyAnswerResult } from '../../services/anatomy/grading'
 import { shuffle, type Rng } from '../../services/practice/randomPick'
 import { resolveRegionMaskColor } from '../../../shared/practice/maskColor'
+import { normalizeForAnswerMatch } from '../../../shared/text/normalizeVietnamese'
+import { getRegion, updateRegion } from './practiceRegions.repo'
 import type { AnatomyFeedbackMode } from '../../../shared/types/anatomyQuiz'
 import type {
   CheckPracticeAnswerInput,
   CreatePracticeStationSetInput,
   PlayablePracticeQuestion,
+  PracticeAnswerReportKind,
   PracticeAttemptAnswerReview,
   PracticeAttemptReview,
   PracticeAttemptSummary,
@@ -15,6 +18,8 @@ import type {
   PracticeQuestionSummary,
   PracticeStationSet,
   Rect,
+  ReportPracticeAnswerInput,
+  ReportPracticeAnswerResult,
   SavePracticeAttemptProgressInput,
   StartedPracticeAttempt,
   StartPracticeAttemptInput,
@@ -372,6 +377,72 @@ export function checkAnswer(input: CheckPracticeAnswerInput): { isCorrect: boole
     .get(input.attemptId, input.regionId) as AttemptQuestionRow | undefined
   if (!question) throw new Error('Không tìm thấy câu hỏi trong lượt thi.')
   return { isCorrect: gradeOne(question, input.submittedText), correctAnswerText: question.answer_text }
+}
+
+/** Ap dung 1 thao tac bao cao len (dap an, dap an chap nhan duoc): them dap an dung hoac thay dap an goc. */
+function applyAnswerReport(
+  answerText: string,
+  alternates: string[],
+  kind: PracticeAnswerReportKind,
+  text: string
+): { answerText: string; alternates: string[] } {
+  if (kind === 'add') {
+    const known = new Set([answerText, ...alternates].map(normalizeForAnswerMatch))
+    return { answerText, alternates: known.has(normalizeForAnswerMatch(text)) ? alternates : [...alternates, text] }
+  }
+  return { answerText: text, alternates: alternates.filter((a) => normalizeForAnswerMatch(a) !== normalizeForAnswerMatch(text)) }
+}
+
+/**
+ * Nguoi dung bao cham sai: bo sung dap an dung ('add') hoac sua dap an goc ('replace').
+ * Ghi vao vung goc (luot sau dung ngay) va vao ban chup cua luot nay; luot da nop duoc cham lai
+ * cau do, cap nhat so cau dung va diem. Thi thu dang lam bi khoa de khong lo dap an giua chung.
+ */
+export function reportAnswerIssue(input: ReportPracticeAnswerInput): ReportPracticeAnswerResult {
+  const db = getDb()
+  const text = input.text.trim()
+  if (text === '') throw new Error('Đáp án không được để trống.')
+  const attempt = db.prepare('SELECT * FROM practice_attempts WHERE id = ?').get(input.attemptId) as AttemptRow | undefined
+  if (!attempt) throw new Error('Không tìm thấy lượt thi.')
+  if (attempt.status === 'in_progress' && attempt.feedback_mode === 'exam') {
+    throw new Error('Thi thử chỉ báo cáo sai sót được sau khi nộp bài.')
+  }
+  const snapshot = db
+    .prepare('SELECT * FROM practice_attempt_questions WHERE attempt_id = ? AND region_id = ?')
+    .get(input.attemptId, input.regionId) as AttemptQuestionRow | undefined
+  if (!snapshot) throw new Error('Không tìm thấy câu hỏi trong lượt thi.')
+  const region = getRegion(input.regionId)
+  if (!region) throw new Error('Câu hỏi này không còn trong file nên không sửa được đáp án.')
+
+  let review: PracticeAttemptReview | null = null
+  let regraded: AttemptQuestionRow = snapshot
+  let isCorrect = false
+  const tx = db.transaction(() => {
+    const live = applyAnswerReport(region.answerText ?? '', region.alternates, input.kind, text)
+    updateRegion(region.id, { answerText: live.answerText, alternates: live.alternates })
+    const frozen = applyAnswerReport(snapshot.answer_text, JSON.parse(snapshot.alternates_json) as string[], input.kind, text)
+    db.prepare('UPDATE practice_attempt_questions SET answer_text = ?, alternates_json = ? WHERE attempt_id = ? AND region_id = ?')
+      .run(frozen.answerText, JSON.stringify(frozen.alternates), input.attemptId, input.regionId)
+    regraded = { ...snapshot, answer_text: frozen.answerText, alternates_json: JSON.stringify(frozen.alternates) }
+
+    if (attempt.status !== 'completed') {
+      isCorrect = gradeOne(regraded, input.submittedText)
+      return
+    }
+    const stored = db.prepare('SELECT * FROM practice_attempt_answers WHERE attempt_id = ? AND region_id = ?')
+      .get(input.attemptId, input.regionId) as AnswerRow | undefined
+    isCorrect = gradeOne(regraded, stored?.submitted_text ?? '')
+    if (stored) db.prepare('UPDATE practice_attempt_answers SET is_correct = ? WHERE id = ?').run(isCorrect ? 1 : 0, stored.id)
+    const correctCount = (db.prepare('SELECT COUNT(*) AS n FROM practice_attempt_answers WHERE attempt_id = ? AND is_correct = 1')
+      .get(input.attemptId) as { n: number }).n
+    const score = attempt.question_count > 0 ? Math.round((correctCount / attempt.question_count) * 100) / 10 : 0
+    db.prepare('UPDATE practice_attempts SET correct_count = ?, score = ? WHERE id = ?').run(correctCount, score, input.attemptId)
+  })
+  tx()
+  if (attempt.status === 'completed') {
+    review = buildReview(db.prepare('SELECT * FROM practice_attempts WHERE id = ?').get(input.attemptId) as AttemptRow)
+  }
+  return { isCorrect, correctAnswerText: regraded.answer_text, review }
 }
 
 function buildReview(attempt: AttemptRow): PracticeAttemptReview {

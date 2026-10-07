@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Maximize, Minimize, Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react'
 import ConfirmDialog from '@renderer/components/common/ConfirmDialog'
+import { usePageImage } from '@renderer/queries/attachmentView'
 import {
   useCheckPracticeAnswer,
   useCreatePracticeReviewSet,
@@ -210,6 +211,7 @@ function AttemptRunner({ fileId, started, penaltyMs, onFinished, onExit }: Runne
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [reporting, setReporting] = useState(false) // dang mo bang "Bao cao sai sot": dung dem nguoc xem dap an
 
   const startedAt = useRef(Date.now())
   const pausedAt = useRef<number | null>(null)
@@ -225,6 +227,11 @@ function AttemptRunner({ fileId, started, penaltyMs, onFinished, onExit }: Runne
 
   const current = questions[activeIndex]
   const viewing = questions[viewIndex]
+  // Tai truoc anh trang cua 2 cau ke tiep (react-query giu lai) de sang cau khong phai cho dung anh.
+  const upcomingA = questions[activeIndex + 1]
+  const upcomingB = questions[activeIndex + 2]
+  usePageImage(fileId, 'page', upcomingA?.pageNumber ?? 0, upcomingA !== undefined)
+  usePageImage(fileId, 'page', upcomingB?.pageNumber ?? 0, upcomingB !== undefined)
   const isActive = viewIndex === activeIndex
   const confirmedCurrent = confirmed.has(current.regionId)
   const frozen = isPractice && confirmedCurrent // da xac nhan o luyen tap: dung dong ho cho den khi sang cau ke
@@ -452,7 +459,7 @@ function AttemptRunner({ fileId, started, penaltyMs, onFinished, onExit }: Runne
 
   // dem nguoc xem dap an sau khi het gio (luyen tap)
   useEffect(() => {
-    if (reviewSeconds === null) return
+    if (reviewSeconds === null || reporting) return
     if (reviewSeconds <= 0) {
       advance()
       return
@@ -460,7 +467,7 @@ function AttemptRunner({ fileId, started, penaltyMs, onFinished, onExit }: Runne
     const id = window.setTimeout(() => setReviewSeconds((value) => (value === null ? null : value - 1)), 1000)
     return () => window.clearTimeout(id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviewSeconds])
+  }, [reviewSeconds, reporting])
 
   // luu tien trinh dinh ky (gop 300ms, doi moi 3 giay cua dong ho)
   const remainingBucket = remainingMs === null ? null : Math.floor(remainingMs / 3000)
@@ -616,6 +623,15 @@ function AttemptRunner({ fileId, started, penaltyMs, onFinished, onExit }: Runne
               feedback={viewFeedback}
               timedOut={timedOut && isActive}
               notice={cardNotice}
+              report={isPractice ? {
+                fileId,
+                attemptId,
+                onOpenChange: setReporting,
+                onReported: (result) => setFeedback((old) => ({
+                  ...old,
+                  [viewing.regionId]: { isCorrect: result.isCorrect, correctAnswerText: result.correctAnswerText }
+                }))
+              } : undefined}
             />
             <p className="pq-keyhint">
               Enter: {isPractice ? 'xác nhận / câu tiếp theo' : 'xác nhận đáp án'} · Esc: thoát
@@ -662,18 +678,17 @@ export default function PracticePlayOverlay({ fileId, onClose, initialStationSet
 
   const startSet = (stationSetId: string): void => {
     setError(null)
-    startAttempt.mutate(
-      { stationSetId },
-      {
-        onSuccess: (started) => {
-          setBooting(false)
-          setPhase({ kind: 'run', started, penaltyMs: 0 })
-        },
-        onError: (err) => {
-          setBooting(false)
-          setPhase({ kind: 'pick' })
-          setError(errorText(err, 'Không bắt đầu được bài thi.'))
-        }
+    // mutateAsync (khong dung callback cua mutate): trong StrictMode (dev) component bi go roi gan lai ngay khi mo,
+    // luc do TanStack Query bo theo doi mutation nen onSuccess cua mutate khong bao gio chay -> ket o "Dang chuan bi".
+    startAttempt.mutateAsync({ stationSetId }).then(
+      (started) => {
+        setBooting(false)
+        setPhase({ kind: 'run', started, penaltyMs: 0 })
+      },
+      (err: unknown) => {
+        setBooting(false)
+        setPhase({ kind: 'pick' })
+        setError(errorText(err, 'Không bắt đầu được bài thi.'))
       }
     )
   }
@@ -746,6 +761,7 @@ export default function PracticePlayOverlay({ fileId, onClose, initialStationSet
         <PracticeAttemptResultView
           fileId={fileId}
           review={review}
+          onReviewChange={(next) => setPhase({ kind: 'result', review: next, stationSetId })}
           actions={
             <>
               {hasWrong && (

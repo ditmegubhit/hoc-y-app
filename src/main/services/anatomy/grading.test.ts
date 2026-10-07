@@ -48,6 +48,20 @@ describe('computeAnatomyAnswerResult', () => {
     expect(res.isCorrect).toBe(false)
   })
 
+  it('chap nhan doi cho cum "phan/doan + tu" giua dau va cuoi', () => {
+    const q = { answerText: 'Tá tràng phần xuống', acceptedAlternates: [] }
+    expect(computeAnatomyAnswerResult(q, 'Phần xuống tá tràng').isCorrect).toBe(true)
+    expect(computeAnatomyAnswerResult({ answerText: 'Phần xuống tá tràng', acceptedAlternates: [] }, 'tá tràng phần xuống').isCorrect).toBe(true)
+    expect(computeAnatomyAnswerResult({ answerText: 'Niệu quản đoạn bụng', acceptedAlternates: [] }, 'đoạn bụng niệu quản').isCorrect).toBe(true)
+  })
+
+  it('doi cho khong lam doi nghia: sai phan thi van sai', () => {
+    const q = { answerText: 'Tá tràng phần xuống', acceptedAlternates: [] }
+    expect(computeAnatomyAnswerResult(q, 'Phần ngang tá tràng').isCorrect).toBe(false)
+    expect(computeAnatomyAnswerResult(q, 'xuống tràng tá phần').isCorrect).toBe(false)
+    expect(computeAnatomyAnswerResult(q, 'phần xuống').isCorrect).toBe(false)
+  })
+
   it('cau tra loi rong thi sai', () => {
     const res = computeAnatomyAnswerResult({ answerText: 'Niệu quản', acceptedAlternates: [] }, '')
     expect(res.isCorrect).toBe(false)

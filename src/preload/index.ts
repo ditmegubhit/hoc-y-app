@@ -213,6 +213,7 @@ const api: AppApi = {
     resumeAttempt: (attemptId) => ipcRenderer.invoke(IpcChannels.practice.resumeAttempt, { attemptId }),
     findActiveAttempt: (fileId) => ipcRenderer.invoke(IpcChannels.practice.findActiveAttempt, { fileId }),
     checkAnswer: (input) => ipcRenderer.invoke(IpcChannels.practice.checkAnswer, input),
+    reportAnswerIssue: (input) => ipcRenderer.invoke(IpcChannels.practice.reportAnswerIssue, input),
     submitAttempt: (input) => ipcRenderer.invoke(IpcChannels.practice.submitAttempt, input),
     getAttemptReview: (attemptId) => ipcRenderer.invoke(IpcChannels.practice.getAttemptReview, { attemptId }),
     listAttemptHistory: (fileId) => ipcRenderer.invoke(IpcChannels.practice.listAttemptHistory, { fileId }),

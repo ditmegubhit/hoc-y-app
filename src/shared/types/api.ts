@@ -65,6 +65,8 @@ import type {
   PracticeRegion,
   PracticeScanProgress,
   PracticeScanResult,
+  ReportPracticeAnswerInput,
+  ReportPracticeAnswerResult,
   PracticeScanState,
   PracticeSearchResult,
   PracticeSourceStatus,
@@ -273,6 +275,7 @@ export interface AppApi {
     resumeAttempt: (attemptId: string) => Promise<StartedPracticeAttempt | null>
     findActiveAttempt: (fileId: string) => Promise<string | null>
     checkAnswer: (input: CheckPracticeAnswerInput) => Promise<{ isCorrect: boolean; correctAnswerText: string }>
+    reportAnswerIssue: (input: ReportPracticeAnswerInput) => Promise<ReportPracticeAnswerResult>
     submitAttempt: (input: SubmitPracticeAttemptInput) => Promise<PracticeAttemptReview>
     getAttemptReview: (attemptId: string) => Promise<PracticeAttemptReview | null>
     listAttemptHistory: (fileId: string) => Promise<PracticeAttemptSummary[]>

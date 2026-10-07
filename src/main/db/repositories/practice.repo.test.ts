@@ -307,6 +307,78 @@ describe('bai thi', () => {
     expect(history[0].stationSetName).toBe('S')
   })
 
+  it('bao cao sai sot - bo sung dap an dung: luyen tap dang lam cham lai ngay, luot sau cung dung', () => {
+    const { fileId, a, b } = setup()
+    const set = quiz.createStationSet({ fileId, name: 'LT', feedbackMode: 'practice', timeLimitSeconds: 0, regionIds: [a.id, b.id] })
+    const started = quiz.startAttempt({ stationSetId: set.id })
+    expect(quiz.checkAnswer({ attemptId: started.attemptId, regionId: a.id, submittedText: 'quả thận' }).isCorrect).toBe(false)
+    const result = quiz.reportAnswerIssue({
+      attemptId: started.attemptId, regionId: a.id, kind: 'add', text: '  Quả thận ', submittedText: 'quả thận'
+    })
+    expect(result).toMatchObject({ isCorrect: true, correctAnswerText: 'Thận', review: null })
+    expect(regions.getRegion(a.id)?.alternates).toEqual(['Quả thận'])
+    expect(regions.getRegion(a.id)?.answerText).toBe('Thận')
+    expect(quiz.checkAnswer({ attemptId: started.attemptId, regionId: a.id, submittedText: 'QUẢ THẬN' }).isCorrect).toBe(true)
+    // bo sung lan nua cung cau tra loi khong tao ban sao
+    quiz.reportAnswerIssue({ attemptId: started.attemptId, regionId: a.id, kind: 'add', text: 'quả  thận', submittedText: 'quả thận' })
+    expect(regions.getRegion(a.id)?.alternates).toEqual(['Quả thận'])
+    // luot moi dung ban moi
+    quiz.submitAttempt({ attemptId: started.attemptId, durationSeconds: 1, answers: [] })
+    const next = quiz.startAttempt({ stationSetId: set.id })
+    expect(quiz.checkAnswer({ attemptId: next.attemptId, regionId: a.id, submittedText: 'quả thận' }).isCorrect).toBe(true)
+  })
+
+  it('bao cao sai sot - sua dap an sai: cham lai luot da nop, cap nhat diem, bo sung khong trung dap an moi', () => {
+    const { fileId, a, b } = setup()
+    regions.updateRegion(a.id, { answerText: 'Thân', alternates: ['Thận', 'Quả thận'] }) // OCR doc sai
+    const set = quiz.createStationSet({ fileId, name: 'Thi', feedbackMode: 'exam', timeLimitSeconds: 30, regionIds: [a.id, b.id] })
+    const started = quiz.startAttempt({ stationSetId: set.id })
+    const review = quiz.submitAttempt({
+      attemptId: started.attemptId, durationSeconds: 5,
+      answers: [{ regionId: a.id, submittedText: 'Thận ' }, { regionId: b.id, submittedText: 'Niệu quản' }]
+    })
+    expect(review).toMatchObject({ correctCount: 2, score: 10 }) // 'Thận' da la dap an chap nhan duoc
+    // lam lai voi dap an chua duoc bo sung
+    regions.updateRegion(a.id, { alternates: [] })
+    const second = quiz.startAttempt({ stationSetId: set.id })
+    const secondReview = quiz.submitAttempt({
+      attemptId: second.attemptId, durationSeconds: 5,
+      answers: [{ regionId: a.id, submittedText: 'Thận' }, { regionId: b.id, submittedText: 'Niệu quản' }]
+    })
+    expect(secondReview).toMatchObject({ correctCount: 1, totalCount: 2, score: 5 })
+
+    const result = quiz.reportAnswerIssue({
+      attemptId: second.attemptId, regionId: a.id, kind: 'replace', text: ' Thận', submittedText: 'Thận'
+    })
+    expect(result.isCorrect).toBe(true)
+    expect(result.correctAnswerText).toBe('Thận')
+    expect(result.review).toMatchObject({ correctCount: 2, totalCount: 2, score: 10 })
+    expect(result.review?.answers.find((x) => x.regionId === a.id)).toMatchObject({ isCorrect: true, correctAnswerText: 'Thận' })
+    expect(quiz.getAttemptReview(second.attemptId)?.score).toBe(10)
+    expect(quiz.listAttemptHistory(fileId).find((h) => h.attemptId === second.attemptId)).toMatchObject({ correctCount: 2, score: 10 })
+    expect(regions.getRegion(a.id)).toMatchObject({ answerText: 'Thận', alternates: [] })
+  })
+
+  it('bao cao sai sot: thi thu dang lam bi khoa, noi dung rong bi tu choi, vung da xoa bao loi', () => {
+    const { fileId, a, b } = setup()
+    const exam = quiz.createStationSet({ fileId, name: 'Thi', feedbackMode: 'exam', timeLimitSeconds: 30, regionIds: [a.id, b.id] })
+    const started = quiz.startAttempt({ stationSetId: exam.id })
+    expect(() => quiz.reportAnswerIssue({
+      attemptId: started.attemptId, regionId: a.id, kind: 'add', text: 'x', submittedText: 'x'
+    })).toThrow(/sau khi nộp/)
+    quiz.submitAttempt({ attemptId: started.attemptId, durationSeconds: 1, answers: [] })
+    expect(() => quiz.reportAnswerIssue({
+      attemptId: started.attemptId, regionId: a.id, kind: 'replace', text: '   ', submittedText: ''
+    })).toThrow()
+    expect(() => quiz.reportAnswerIssue({
+      attemptId: started.attemptId, regionId: 'la', kind: 'add', text: 'x', submittedText: ''
+    })).toThrow()
+    regions.deleteRegion(b.id)
+    expect(() => quiz.reportAnswerIssue({
+      attemptId: started.attemptId, regionId: b.id, kind: 'add', text: 'x', submittedText: ''
+    })).toThrow(/không còn/)
+  })
+
   it('on cau sai: chi cac cau sai/bo trong con ton tai, che do luyen tap', () => {
     const { fileId, a, b, c } = setup()
     const set = quiz.createStationSet({ fileId, name: 'Thi', feedbackMode: 'exam', timeLimitSeconds: 25, regionIds: [a.id, b.id, c.id] })

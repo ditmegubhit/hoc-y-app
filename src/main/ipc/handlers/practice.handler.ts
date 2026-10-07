@@ -128,6 +128,13 @@ const saveProgressSchema = z.object({
   answers: answersSchema
 })
 const checkAnswerSchema = z.object({ attemptId: z.string(), regionId: z.string(), submittedText: z.string() })
+const reportAnswerSchema = z.object({
+  attemptId: z.string(),
+  regionId: z.string(),
+  kind: z.enum(['add', 'replace']),
+  text: z.string().max(500),
+  submittedText: z.string().max(500)
+})
 const submitSchema = z.object({
   attemptId: z.string(),
   durationSeconds: z.number().int().nonnegative().nullable(),
@@ -234,6 +241,7 @@ export function registerPracticeHandlers(): void {
   ipcMain.handle(ch.resumeAttempt, (_e, payload) => quizRepo.resumeAttempt(attemptIdSchema.parse(payload).attemptId))
   ipcMain.handle(ch.findActiveAttempt, (_e, payload) => quizRepo.findActiveAttempt(fileIdSchema.parse(payload).fileId))
   ipcMain.handle(ch.checkAnswer, (_e, payload) => quizRepo.checkAnswer(checkAnswerSchema.parse(payload)))
+  ipcMain.handle(ch.reportAnswerIssue, (_e, payload) => quizRepo.reportAnswerIssue(reportAnswerSchema.parse(payload)))
   ipcMain.handle(ch.submitAttempt, (_e, payload) => quizRepo.submitAttempt(submitSchema.parse(payload)))
   ipcMain.handle(ch.getAttemptReview, (_e, payload) => quizRepo.getAttemptReview(attemptIdSchema.parse(payload).attemptId))
   ipcMain.handle(ch.listAttemptHistory, (_e, payload) => quizRepo.listAttemptHistory(fileIdSchema.parse(payload).fileId))

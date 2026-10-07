@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, X as XIcon } from 'lucide-react'
 import { usePageImage } from '@renderer/queries/attachmentView'
+import PracticeAnswerReport, { type PracticeAnswerReportTarget } from './PracticeAnswerReport'
 import type { PracticeAttemptReview, PracticeMaskBox, Rect } from '@shared/types/practice'
 import { formatDateTime, formatDuration, formatScore, isPassed, scorePercent } from '@shared/practice/quizLogic'
 import './practiceQuiz.css'
@@ -140,6 +141,8 @@ export interface PracticePlayCardProps extends BaseProps {
   timedOut?: boolean
   /** Dong nhac them duoi o nhap (vd "Dang xem lai cau cu"). */
   notice?: string | null
+  /** Cho phep bao cao cham sai (bo sung / sua dap an) sau khi cau bi cham sai. */
+  report?: PracticeAnswerReportTarget
 }
 
 export interface PracticeReviewCardProps extends BaseProps {
@@ -148,13 +151,14 @@ export interface PracticeReviewCardProps extends BaseProps {
   correctAnswerText: string
   isCorrect: boolean
   defaultMaskView?: PracticeMaskView
+  report?: PracticeAnswerReportTarget
 }
 
 export type PracticeQuestionCardProps = PracticePlayCardProps | PracticeReviewCardProps
 
 function PlayCard(props: PracticePlayCardProps): React.JSX.Element {
   const { fileId, question, index, total, value, onChange, locked, actionLabel, onAction, actionDisabled = false,
-    feedback = null, timedOut = false, notice = null } = props
+    feedback = null, timedOut = false, notice = null, report } = props
   const inputRef = useRef<HTMLInputElement | null>(null)
   const actionRef = useRef<HTMLButtonElement | null>(null)
 
@@ -196,12 +200,16 @@ function PlayCard(props: PracticePlayCardProps): React.JSX.Element {
           {timedOut && <p className="pq-feedback-late">Bạn ngu vcl</p>}
         </div>
       )}
+      {feedback && !feedback.isCorrect && report && (
+        <PracticeAnswerReport {...report} regionId={question.regionId} submittedText={value}
+          correctAnswerText={feedback.correctAnswerText} />
+      )}
     </section>
   )
 }
 
 function ReviewCard(props: PracticeReviewCardProps): React.JSX.Element {
-  const { fileId, question, index, total, submittedText, correctAnswerText, isCorrect, defaultMaskView = 'answer' } = props
+  const { fileId, question, index, total, submittedText, correctAnswerText, isCorrect, defaultMaskView = 'answer', report } = props
   const [maskView, setMaskView] = useState<PracticeMaskView>(defaultMaskView)
 
   useEffect(() => setMaskView(defaultMaskView), [defaultMaskView])
@@ -235,6 +243,10 @@ function ReviewCard(props: PracticeReviewCardProps): React.JSX.Element {
           <strong>{correctAnswerText}</strong>
         </div>
       </div>
+      {!isCorrect && report && (
+        <PracticeAnswerReport {...report} regionId={question.regionId} submittedText={submittedText}
+          correctAnswerText={correctAnswerText} />
+      )}
     </section>
   )
 }
@@ -252,6 +264,8 @@ export interface PracticeAttemptResultViewProps {
   review: PracticeAttemptReview
   /** Cac nut hanh dong (On cau sai, Lam lai, Xoa...) ve ben phai phan tong ket. */
   actions?: React.ReactNode
+  /** Goi khi bao cao cham sai lam doi ket qua luot (diem, so cau dung) de man cha cap nhat review. */
+  onReviewChange?: (review: PracticeAttemptReview) => void
 }
 
 function ScoreRing({ score }: { score: number }): React.JSX.Element {
@@ -268,7 +282,7 @@ function ScoreRing({ score }: { score: number }): React.JSX.Element {
   )
 }
 
-export function PracticeAttemptResultView({ fileId, review, actions }: PracticeAttemptResultViewProps): React.JSX.Element {
+export function PracticeAttemptResultView({ fileId, review, actions, onReviewChange }: PracticeAttemptResultViewProps): React.JSX.Element {
   const [filter, setFilter] = useState<ResultFilter>('all')
   const [maskView, setMaskView] = useState<PracticeMaskView>('answer')
   const wrongCount = review.answers.filter((a) => !a.isCorrect).length
@@ -328,7 +342,12 @@ export function PracticeAttemptResultView({ fileId, review, actions }: PracticeA
         {shown.map(({ answer, index }) => (
           <PracticeQuestionCard key={answer.regionId} mode="review" fileId={fileId} question={answer} index={index}
             total={review.answers.length} submittedText={answer.submittedText} correctAnswerText={answer.correctAnswerText}
-            isCorrect={answer.isCorrect} defaultMaskView={maskView} />
+            isCorrect={answer.isCorrect} defaultMaskView={maskView}
+            report={onReviewChange ? {
+              fileId,
+              attemptId: review.attemptId,
+              onReported: (result) => { if (result.review) onReviewChange(result.review) }
+            } : undefined} />
         ))}
       </div>
     </div>

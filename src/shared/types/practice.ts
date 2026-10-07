@@ -347,6 +347,25 @@ export interface CheckPracticeAnswerInput {
   submittedText: string
 }
 
+/** 'add' = bo sung dap an dung (them vao dap an chap nhan duoc); 'replace' = sua dap an goc bi sai. */
+export type PracticeAnswerReportKind = 'add' | 'replace'
+
+export interface ReportPracticeAnswerInput {
+  attemptId: string
+  regionId: string
+  kind: PracticeAnswerReportKind
+  text: string
+  /** Cau tra loi cua nguoi dung o cau nay (dung cham lai khi luot con dang lam). */
+  submittedText: string
+}
+
+export interface ReportPracticeAnswerResult {
+  isCorrect: boolean
+  correctAnswerText: string
+  /** Ket qua luot da cap nhat (diem, so cau dung) khi luot da nop; null neu luot con dang lam. */
+  review: PracticeAttemptReview | null
+}
+
 export interface SubmitPracticeAttemptInput {
   attemptId: string
   durationSeconds: number | null

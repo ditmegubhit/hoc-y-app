@@ -10,6 +10,7 @@ import type {
   PracticeRegion,
   PracticeScanProgress,
   RenamePracticeNodeInput,
+  ReportPracticeAnswerInput,
   ResetPracticeRegionColorsInput,
   SavePracticeAttemptProgressInput,
   SetPracticePageReviewInput,
@@ -415,6 +416,19 @@ export function usePracticeActiveAttempt(fileId: string | null) {
 
 export function useCheckPracticeAnswer() {
   return useMutation({ mutationFn: (input: CheckPracticeAnswerInput) => window.api.practice.checkAnswer(input) })
+}
+
+/** Bao cham sai: bo sung dap an dung / sua dap an goc; doi dap an cau hoi nen cap nhat lich su va danh sach cau. */
+export function useReportPracticeAnswer(fileId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: ReportPracticeAnswerInput) => window.api.practice.reportAnswerIssue(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: practiceKeys.attemptHistory(fileId) })
+      qc.invalidateQueries({ queryKey: practiceKeys.regions(fileId) })
+      qc.invalidateQueries({ queryKey: practiceKeys.questionSummaries(fileId) })
+    }
+  })
 }
 
 export function useSubmitPracticeAttempt(fileId: string) {

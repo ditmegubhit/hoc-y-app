@@ -393,6 +393,75 @@
   font-style: italic;
 }
 
+/* Bao cao cham sai (bo sung / sua dap an) */
+.pq-report {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.7rem;
+}
+
+.pq-report--open {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated, transparent);
+}
+
+.pq-report-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.1rem;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.pq-report-toggle:hover {
+  color: var(--text);
+}
+
+.pq-report-saved {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.pq-report-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.pq-report-field {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.pq-report-field input {
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.pq-report-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .pq-review-head {
   display: flex;
   align-items: center;
